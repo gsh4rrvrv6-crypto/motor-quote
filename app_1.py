@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from datetime import date, datetime
-import json
 
 st.set_page_config(
     page_title="Motor Quote Comparison",
@@ -10,81 +9,28 @@ st.set_page_config(
 )
 
 def fmt_date(d):
-    """Format a date object as DD/MM/YYYY."""
+    """Format a date object or string as DD/MM/YY."""
     if isinstance(d, date):
-        return d.strftime("%d/%m/%Y")
-    return str(d)
+        return d.strftime("%d/%m/%y")
+    return str(d) if d else ""
 
-# ── Styling ──────────────────────────────────────────────────────────────────
+def today_str():
+    return date.today().strftime("%d/%m/%y")
+
+# ── Styling ───────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #1a1a2e;
-        margin-bottom: 0.2rem;
-    }
-    .sub-header {
-        color: #666;
-        font-size: 0.95rem;
-        margin-bottom: 2rem;
-    }
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #1a1a2e;
-        border-bottom: 2px solid #e8e8e8;
-        padding-bottom: 6px;
-        margin-bottom: 1rem;
-    }
-    .quote-card {
-        background: #f8f9ff;
-        border: 1px solid #e0e4ff;
-        border-radius: 12px;
-        padding: 1.2rem;
-        margin-bottom: 1rem;
-    }
-    .best-value {
-        background: #f0fff4;
-        border: 2px solid #48bb78;
-        border-radius: 12px;
-        padding: 1.2rem;
-        margin-bottom: 1rem;
-    }
-    .badge-best {
-        background: #48bb78;
-        color: white;
-        font-size: 0.7rem;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 20px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .price-big {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #1a1a2e;
-    }
-    .price-sub {
-        font-size: 0.85rem;
-        color: #666;
-    }
-    .stButton > button {
-        background-color: #1a1a2e;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 600;
-    }
-    .stButton > button:hover {
-        background-color: #2d2d4e;
-    }
-    div[data-testid="stExpander"] {
-        border: 1px solid #e0e4ff;
-        border-radius: 8px;
-    }
+    .main-header { font-size:2rem; font-weight:700; color:#1a1a2e; margin-bottom:0.2rem; }
+    .sub-header { color:#666; font-size:0.95rem; margin-bottom:2rem; }
+    .section-title { font-size:1.1rem; font-weight:600; color:#1a1a2e; border-bottom:2px solid #e8e8e8; padding-bottom:6px; margin-bottom:1rem; }
+    .quote-card { background:#f8f9ff; border:1px solid #e0e4ff; border-radius:12px; padding:1.2rem; margin-bottom:1rem; }
+    .best-value { background:#f0fff4; border:2px solid #48bb78; border-radius:12px; padding:1.2rem; margin-bottom:1rem; }
+    .badge-best { background:#48bb78; color:white; font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; }
+    .price-big { font-size:1.8rem; font-weight:700; color:#1a1a2e; }
+    .price-sub { font-size:0.85rem; color:#666; }
+    .stButton > button { background-color:#1a1a2e; color:white; border:none; border-radius:8px; padding:0.5rem 1.5rem; font-weight:600; }
+    .stButton > button:hover { background-color:#2d2d4e; }
+    .date-hint { font-size:0.75rem; color:#999; margin-top:-12px; margin-bottom:8px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -95,14 +41,11 @@ if "vehicle" not in st.session_state:
     st.session_state.vehicle = {}
 if "drivers" not in st.session_state:
     st.session_state.drivers = {}
-if "active_tab" not in st.session_state:
-    st.session_state.active_tab = "Vehicle & Drivers"
 
 # ── Header ────────────────────────────────────────────────────────────────────
 st.markdown('<div class="main-header">🚗 Motor Quote Comparison</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Enter your vehicle and driver details, add quotes from each insurer, then compare side by side.</div>', unsafe_allow_html=True)
 
-# ── Tabs ──────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3 = st.tabs(["📋 Vehicle & Drivers", "💰 Add Quotes", "📊 Compare"])
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -118,10 +61,8 @@ with tab1:
         make = st.text_input("Make", value=st.session_state.vehicle.get("make", ""))
         model = st.text_input("Model", value=st.session_state.vehicle.get("model", ""))
     with col2:
-        variant = st.text_input("Variant / Series",
-                                value=st.session_state.vehicle.get("variant", ""))
-        rego = st.text_input("Registration Number",
-                             value=st.session_state.vehicle.get("rego", ""))
+        variant = st.text_input("Variant / Series", value=st.session_state.vehicle.get("variant", ""))
+        rego = st.text_input("Registration Number", value=st.session_state.vehicle.get("rego", ""))
         rego_state = st.selectbox("Rego State",
                                   ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"],
                                   index=["NSW","VIC","QLD","WA","SA","TAS","ACT","NT"].index(
@@ -131,8 +72,7 @@ with tab1:
                                   ["Comprehensive", "Third Party Fire & Theft", "Third Party Only"],
                                   index=["Comprehensive","Third Party Fire & Theft","Third Party Only"].index(
                                       st.session_state.vehicle.get("cover_type", "Comprehensive")))
-        sum_insured = st.selectbox("Sum Insured Type",
-                                   ["Market Value", "Agreed Value"],
+        sum_insured = st.selectbox("Sum Insured Type", ["Market Value", "Agreed Value"],
                                    index=["Market Value","Agreed Value"].index(
                                        st.session_state.vehicle.get("sum_insured", "Market Value")))
         annual_kms = st.selectbox("Annual Kilometres",
@@ -142,87 +82,63 @@ with tab1:
                                          "20,000 – 25,000","Over 25,000"].index(
                                       st.session_state.vehicle.get("annual_kms", "15,000 – 20,000")))
 
-    st.markdown('<div class="section-title" style="margin-top:1.5rem">Parking & Usage</div>',
-                unsafe_allow_html=True)
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">Parking & Usage</div>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
-        overnight_suburb = st.text_input("Overnight Parking Suburb",
-                                         value=st.session_state.vehicle.get("overnight_suburb", ""))
-        overnight_postcode = st.text_input("Overnight Postcode",
-                                           value=st.session_state.vehicle.get("overnight_postcode", ""))
+        overnight_suburb = st.text_input("Overnight Parking Suburb", value=st.session_state.vehicle.get("overnight_suburb", ""))
+        overnight_postcode = st.text_input("Overnight Postcode", value=st.session_state.vehicle.get("overnight_postcode", ""))
     with col2:
-        day_suburb = st.text_input("Daytime Parking Suburb",
-                                   value=st.session_state.vehicle.get("day_suburb", ""))
-        day_postcode = st.text_input("Daytime Postcode",
-                                     value=st.session_state.vehicle.get("day_postcode", ""))
+        day_suburb = st.text_input("Daytime Parking Suburb", value=st.session_state.vehicle.get("day_suburb", ""))
+        day_postcode = st.text_input("Daytime Postcode", value=st.session_state.vehicle.get("day_postcode", ""))
     with col3:
-        usage = st.multiselect("Vehicle Usage",
-                               ["Private", "Commute", "Business"],
+        usage = st.multiselect("Vehicle Usage", ["Private", "Commute", "Business"],
                                default=st.session_state.vehicle.get("usage", ["Private"]))
         finance = st.selectbox("Financed?", ["No", "Yes"],
-                               index=["No","Yes"].index(
-                                   st.session_state.vehicle.get("finance", "No")))
+                               index=["No","Yes"].index(st.session_state.vehicle.get("finance", "No")))
 
-    st.markdown('<div class="section-title" style="margin-top:1.5rem">Policy Details</div>',
-                unsafe_allow_html=True)
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">Policy Details</div>', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
-        start_date = st.date_input("Policy Start Date",
-                                   value=st.session_state.vehicle.get(
-                                       "start_date", date.today()))
-        previous_insurer = st.text_input("Previous Insurer",
-                                         value=st.session_state.vehicle.get("previous_insurer", ""))
+        start_date = st.text_input("Policy Start Date (DD/MM/YY)",
+                                   value=st.session_state.vehicle.get("start_date", today_str()))
+        previous_insurer = st.text_input("Previous Insurer", value=st.session_state.vehicle.get("previous_insurer", ""))
     with col2:
         excess = st.number_input("Basic Excess ($)", min_value=0, max_value=5000,
                                  value=st.session_state.vehicle.get("excess", 500), step=50)
 
-    st.markdown('<div class="section-title" style="margin-top:1.5rem">Drivers</div>',
-                unsafe_allow_html=True)
-
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">Drivers</div>', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**Main Driver**")
-        d1_name = st.text_input("Name", key="d1_name",
-                                value=st.session_state.drivers.get("d1_name", ""))
-        d1_dob = st.date_input("Date of Birth", key="d1_dob",
-                               value=st.session_state.drivers.get(
-                                   "d1_dob", date(1990, 1, 1)),
-                               min_value=date(1920, 1, 1))
+        d1_name = st.text_input("Name", key="d1_name", value=st.session_state.drivers.get("d1_name", ""))
+        d1_dob = st.text_input("Date of Birth (DD/MM/YY)", key="d1_dob",
+                               value=st.session_state.drivers.get("d1_dob", ""))
         d1_gender = st.selectbox("Gender", ["Female", "Male", "Other"], key="d1_gender",
                                  index=["Female","Male","Other"].index(
                                      st.session_state.drivers.get("d1_gender", "Female")))
         d1_licence = st.selectbox("Licence Type",
-                                  ["Full Australian", "Learner", "Provisional P1",
-                                   "Provisional P2", "International"],
+                                  ["Full Australian", "Learner", "Provisional P1", "Provisional P2", "International"],
                                   key="d1_licence",
-                                  index=["Full Australian","Learner","Provisional P1",
-                                         "Provisional P2","International"].index(
+                                  index=["Full Australian","Learner","Provisional P1","Provisional P2","International"].index(
                                       st.session_state.drivers.get("d1_licence", "Full Australian")))
-        d1_claims = st.selectbox("Claims in last 3 years", ["None", "1", "2", "3+"],
-                                 key="d1_claims",
+        d1_claims = st.selectbox("Claims in last 3 years", ["None", "1", "2", "3+"], key="d1_claims",
                                  index=["None","1","2","3+"].index(
                                      st.session_state.drivers.get("d1_claims", "None")))
 
     with col2:
         st.markdown("**Additional Driver** *(optional)*")
-        d2_name = st.text_input("Name", key="d2_name",
-                                value=st.session_state.drivers.get("d2_name", ""))
-        d2_dob = st.date_input("Date of Birth", key="d2_dob",
-                               value=st.session_state.drivers.get(
-                                   "d2_dob", date(1990, 1, 1)),
-                               min_value=date(1920, 1, 1))
+        d2_name = st.text_input("Name", key="d2_name", value=st.session_state.drivers.get("d2_name", ""))
+        d2_dob = st.text_input("Date of Birth (DD/MM/YY)", key="d2_dob",
+                               value=st.session_state.drivers.get("d2_dob", ""))
         d2_gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="d2_gender",
                                  index=["Male","Female","Other"].index(
                                      st.session_state.drivers.get("d2_gender", "Male")))
         d2_licence = st.selectbox("Licence Type",
-                                  ["Full Australian", "Learner", "Provisional P1",
-                                   "Provisional P2", "International"],
+                                  ["Full Australian", "Learner", "Provisional P1", "Provisional P2", "International"],
                                   key="d2_licence",
-                                  index=["Full Australian","Learner","Provisional P1",
-                                         "Provisional P2","International"].index(
+                                  index=["Full Australian","Learner","Provisional P1","Provisional P2","International"].index(
                                       st.session_state.drivers.get("d2_licence", "Full Australian")))
-        d2_claims = st.selectbox("Claims in last 3 years", ["None", "1", "2", "3+"],
-                                 key="d2_claims",
+        d2_claims = st.selectbox("Claims in last 3 years", ["None", "1", "2", "3+"], key="d2_claims",
                                  index=["None","1","2","3+"].index(
                                      st.session_state.drivers.get("d2_claims", "None")))
 
@@ -260,18 +176,15 @@ with tab2:
         with col1:
             insurer = st.selectbox("Insurer", insurers)
             custom_insurer = st.text_input("If 'Other', enter name")
-            annual_premium = st.number_input("Annual Premium ($)", min_value=0.0,
-                                             step=0.01, format="%.2f")
+            annual_premium = st.number_input("Annual Premium ($)", min_value=0.0, step=0.01, format="%.2f")
         with col2:
-            monthly_premium = st.number_input("Monthly Premium ($) — if offered",
-                                              min_value=0.0, step=0.01, format="%.2f")
+            monthly_premium = st.number_input("Monthly Premium ($) — if offered", min_value=0.0, step=0.01, format="%.2f")
             quote_excess = st.number_input("Excess ($)", min_value=0, step=50, value=500)
-            cover = st.selectbox("Cover Type",
-                                 ["Comprehensive", "Third Party Fire & Theft", "Third Party Only"])
+            cover = st.selectbox("Cover Type", ["Comprehensive", "Third Party Fire & Theft", "Third Party Only"])
         with col3:
             sum_type = st.selectbox("Sum Insured", ["Market Value", "Agreed Value"])
             quote_ref = st.text_input("Quote Reference / Number")
-            valid_until = st.date_input("Quote Valid Until", value=date.today())
+            valid_until = st.text_input("Quote Valid Until (DD/MM/YY)", value=today_str())
 
         st.markdown("**Inclusions & Notes**")
         col1, col2 = st.columns(2)
@@ -296,7 +209,7 @@ with tab2:
                     "cover": cover,
                     "sum_type": sum_type,
                     "quote_ref": quote_ref,
-                    "valid_until": fmt_date(valid_until),
+                    "valid_until": valid_until,
                     "roadside": roadside,
                     "hire_car": hire_car,
                     "windscreen": windscreen,
@@ -308,10 +221,8 @@ with tab2:
             else:
                 st.error("Please enter an annual premium greater than $0.")
 
-    # Show existing quotes
     if st.session_state.quotes:
-        st.markdown('<div class="section-title" style="margin-top:2rem">Quotes Entered</div>',
-                    unsafe_allow_html=True)
+        st.markdown('<div class="section-title" style="margin-top:2rem">Quotes Entered</div>', unsafe_allow_html=True)
         for i, q in enumerate(st.session_state.quotes):
             col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
             with col1:
@@ -337,7 +248,6 @@ with tab3:
         best = sorted_quotes[0]
         v = st.session_state.vehicle
 
-        # Vehicle summary banner
         if v:
             vehicle_str = f"{v.get('year','')} {v.get('make','')} {v.get('model','')} {v.get('variant','')}".strip()
             st.markdown(
@@ -346,12 +256,11 @@ with tab3:
                 f"🚗 <strong>{vehicle_str}</strong> &nbsp;·&nbsp; "
                 f"{v.get('cover_type','Comprehensive')} &nbsp;·&nbsp; "
                 f"{v.get('sum_insured','Market Value')} &nbsp;·&nbsp; "
-                f"Start: {fmt_date(v.get('start_date', '—'))}"
+                f"Start: {v.get('start_date', '—')}"
                 f"</div>",
                 unsafe_allow_html=True
             )
 
-        # Metric summary row
         prices = [q["annual_premium"] for q in quotes]
         saving = max(prices) - min(prices)
         col1, col2, col3, col4 = st.columns(4)
@@ -361,8 +270,6 @@ with tab3:
         col4.metric("Max Saving", f"${saving:,.2f}")
 
         st.markdown("---")
-
-        # Quote cards
         st.markdown('<div class="section-title">Quote Breakdown</div>', unsafe_allow_html=True)
 
         cols = st.columns(min(len(sorted_quotes), 3))
@@ -376,10 +283,8 @@ with tab3:
                 saving_str = (f'<span style="color:#e53e3e;font-size:0.8rem">+${saving_vs_best:,.2f} more</span>'
                               if saving_vs_best > 0 else
                               '<span style="color:#48bb78;font-size:0.8rem">✓ Lowest price</span>')
-
                 monthly_str = (f'<div class="price-sub">${q["monthly_premium"]:,.2f}/month</div>'
                                if q["monthly_premium"] > 0 else "")
-
                 inclusions = []
                 if q["roadside"]: inclusions.append("Roadside")
                 if q["hire_car"]: inclusions.append("Hire Car")
@@ -387,12 +292,9 @@ with tab3:
                 if q["no_claims"]: inclusions.append("NCD")
                 if q["online_discount"]: inclusions.append("Online discount")
                 inc_str = " · ".join(inclusions) if inclusions else "None noted"
-
-                ref_str = (f'<div style="font-size:0.75rem;color:#888;margin-top:4px">'
-                           f'Ref: {q["quote_ref"]}</div>' if q["quote_ref"] else "")
-
-                notes_str = (f'<div style="font-size:0.8rem;color:#666;margin-top:8px;'
-                             f'border-top:1px solid #e0e0e0;padding-top:8px">{q["notes"]}</div>'
+                ref_str = (f'<div style="font-size:0.75rem;color:#888;margin-top:4px">Ref: {q["quote_ref"]}</div>'
+                           if q["quote_ref"] else "")
+                notes_str = (f'<div style="font-size:0.8rem;color:#666;margin-top:8px;border-top:1px solid #e0e0e0;padding-top:8px">{q["notes"]}</div>'
                              if q["notes"] else "")
 
                 st.markdown(f"""
@@ -414,9 +316,7 @@ with tab3:
                 </div>
                 """, unsafe_allow_html=True)
 
-        # Comparison table
-        st.markdown('<div class="section-title" style="margin-top:2rem">Full Comparison Table</div>',
-                    unsafe_allow_html=True)
+        st.markdown('<div class="section-title" style="margin-top:2rem">Full Comparison Table</div>', unsafe_allow_html=True)
 
         table_data = []
         for q in sorted_quotes:
@@ -438,7 +338,6 @@ with tab3:
         df = pd.DataFrame(table_data)
         st.dataframe(df, use_container_width=True, hide_index=True)
 
-        # Export
         st.markdown("---")
         col1, col2 = st.columns(2)
         with col1:
@@ -446,7 +345,7 @@ with tab3:
             st.download_button(
                 "⬇️  Download as CSV",
                 data=csv,
-                file_name=f"motor_quotes_{date.today().strftime('%d%m%Y')}.csv",
+                file_name=f"motor_quotes_{date.today().strftime('%d%m%y')}.csv",
                 mime="text/csv",
                 use_container_width=True
             )
