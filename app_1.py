@@ -46,7 +46,7 @@ if "drivers" not in st.session_state:
 st.markdown('<div class="main-header">🚗 Motor Quote Comparison</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Enter your vehicle and driver details, add quotes from each insurer, then compare side by side.</div>', unsafe_allow_html=True)
 
-tab1, tab2, tab3 = st.tabs(["📋 Vehicle & Drivers", "💰 Add Quotes", "📊 Compare"])
+tab1, tab2, tab3, tab4 = st.tabs(["📋 Vehicle & Drivers", "💰 Add Quotes", "📊 Compare", "🤖 Get Quotes"])
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 1 — Vehicle & Drivers
@@ -353,3 +353,188 @@ with tab3:
             if st.button("🗑  Clear All Quotes", use_container_width=True):
                 st.session_state.quotes = []
                 st.rerun()
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 4 — Get Quotes (automation prompts)
+# ════════════════════════════════════════════════════════════════════════════
+with tab4:
+    st.markdown('<div class="section-title">Get Quotes Automatically</div>', unsafe_allow_html=True)
+
+    v = st.session_state.vehicle
+    d = st.session_state.drivers
+
+    if not v:
+        st.warning("⚠️ Please fill in your Vehicle & Driver details first (Tab 1), then come back here.")
+    else:
+        st.markdown("""
+        **How this works:**
+        1. Make sure you have the **Claude in Chrome** extension installed in your browser
+        2. Click **Copy Prompt** next to the insurer you want
+        3. Open a new Claude chat at [claude.ai](https://claude.ai)
+        4. Paste the prompt and hit send — Claude will fill out the quote form automatically
+        5. Come back here and enter the quoted price in the **Add Quotes** tab
+        """)
+
+        st.info("💡 Youi always delivers pricing via a phone call — they will call you with the quote rather than show it on screen.")
+
+        st.markdown("---")
+
+        # Build the shared vehicle/driver context block
+        vehicle_str = f"{v.get('year','')} {v.get('make','')} {v.get('model','')} {v.get('variant','')}".strip()
+        usage_str = ", ".join(v.get("usage", [])) if v.get("usage") else "Private"
+        overnight_addr = f"{v.get('overnight_suburb','')} {v.get('overnight_postcode','')}".strip()
+        day_addr = f"{v.get('day_suburb','')} {v.get('day_postcode','')}".strip()
+        d2_block = ""
+        if d.get("d2_name"):
+            d2_block = f"""
+- Additional driver: {d.get('d2_name','')}, DOB {d.get('d2_dob','')}, {d.get('d2_gender','')}, {d.get('d2_licence','Full Australian')} licence, claims: {d.get('d2_claims','None')}"""
+
+        context = f"""Vehicle: {vehicle_str}
+Registration state: {v.get('rego_state','NSW')}
+Registration number: {v.get('rego','')}
+Cover type: {v.get('cover_type','Comprehensive')}
+Sum insured: {v.get('sum_insured','Market Value')}
+Annual kilometres: {v.get('annual_kms','')}
+Overnight parking: {overnight_addr}
+Daytime parking: {day_addr}
+Usage: {usage_str}
+Financed: {v.get('finance','No')}
+Policy start date: {v.get('start_date','')}
+Basic excess: ${v.get('excess',500)}
+Previous insurer: {v.get('previous_insurer','')}
+Main driver: {d.get('d1_name','')}, DOB {d.get('d1_dob','')}, {d.get('d1_gender','')}, {d.get('d1_licence','Full Australian')} licence, claims: {d.get('d1_claims','None')}{d2_block}"""
+
+        # Define per-insurer prompts
+        insurers_prompts = {
+            "GIO": {
+                "url": "https://www.gio.com.au/car-insurance.html",
+                "notes": "Shares the same platform as AAMI. Start date field uses a calendar picker.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from GIO.
+
+Go to: https://www.gio.com.au/car-insurance.html
+
+Click Get a quote for Comprehensive cover, then fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Address format that works best: enter suburb name and select from dropdown
+- GIO and AAMI share the same platform
+- Select market value (not agreed value)
+- If asked about modifications, select None
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "AAMI": {
+                "url": "https://www.aami.com.au/car-insurance/get-quote.html",
+                "notes": "Shares the same platform as GIO.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from AAMI.
+
+Go to: https://www.aami.com.au/car-insurance/get-quote.html
+
+Fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Address format that works best: enter suburb name and select from dropdown
+- Select market value (not agreed value)
+- If asked about modifications, select None
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "Budget Direct": {
+                "url": "https://www.budgetdirect.com.au/car-insurance/get-quote.html",
+                "notes": "Quote flow starts with overnight address before rego lookup. Requires 'Always allow' permission grant.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Budget Direct.
+
+Go to: https://www.budgetdirect.com.au/car-insurance/get-quote.html
+
+Fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow". Budget Direct asks for the overnight address BEFORE the rego lookup — this is normal.
+
+{context}
+
+Notes:
+- Enter overnight address first when prompted, before entering rego
+- Address format: enter full address including state and postcode e.g. "Lane Cove NSW 2066"
+- Select market value (not agreed value)
+- Apply any online discount if offered
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, monthly premium if shown, excess, quote reference number, any discounts applied, and what inclusions are listed."""
+            },
+            "NRMA": {
+                "url": "https://www.nrma.com.au/car-insurance",
+                "notes": "Opens quote portal in a new tab. Click 'Continue without logging in' when prompted. Requires 'Always allow' permission grant.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from NRMA.
+
+Go to: https://www.nrma.com.au/car-insurance
+
+Click Get a quote for Comprehensive cover. The quote portal will open in a new tab at insurance.nrma.com.au — switch to that tab. Click "Continue without logging in" when it appears. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Click "Continue without logging in" on the welcome screen
+- Address format: enter suburb and select from the dropdown
+- Select market value (not agreed value)
+- Check if there is a promo code field and apply any current discount codes
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, any promo codes applied, and what inclusions are listed."""
+            },
+            "Youi": {
+                "url": "https://www.youi.com.au/car-insurance",
+                "notes": "⚠️ Youi delivers pricing via phone call, not on screen. They will call you with the quote. A mobile PIN verification appears mid-quote.",
+                "prompt": f"""Using the Claude in Chrome extension, please start a comprehensive car insurance quote from Youi.
+
+Go to: https://www.youi.com.au/car-insurance
+
+Fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Important notes:
+- Youi will ask for a mobile number and send a PIN verification mid-quote — enter the PIN when it arrives
+- Youi does NOT show the price on screen — they will call you on your mobile with the quote
+- Make sure your mobile number is correct when entering contact details
+- If asked about at-fault claims, select None in the last 3 years
+- Complete the form as far as possible until they confirm they will call you
+
+Let me know once the form is submitted and Youi has confirmed they will call with the quote."""
+            },
+            "Allianz": {
+                "url": "https://www.allianz.com.au/car-insurance/",
+                "notes": "",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Allianz.
+
+Go to: https://www.allianz.com.au/car-insurance/
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Select market value (not agreed value)
+- If asked about modifications, select None
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+        }
+
+        for insurer_name, info in insurers_prompts.items():
+            with st.expander(f"**{insurer_name}**  —  {info['url']}", expanded=False):
+                if info["notes"]:
+                    st.caption(f"ℹ️ {info['notes']}")
+                st.text_area(
+                    "Automation prompt — copy this into a new Claude chat with Chrome extension active:",
+                    value=info["prompt"],
+                    height=200,
+                    key=f"prompt_{insurer_name}",
+                    label_visibility="visible"
+                )
+                st.markdown(f"[Open {insurer_name} →]({info['url']})")
+
