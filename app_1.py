@@ -52,6 +52,128 @@ tab1, tab2, tab3, tab4 = st.tabs(["📋 Vehicle & Drivers", "💰 Add Quotes", "
 # TAB 1 — Vehicle & Drivers
 # ════════════════════════════════════════════════════════════════════════════
 with tab1:
+
+    # ── Document upload & AI prefill ─────────────────────────────────────────
+    st.markdown('<div class="section-title">📄 Prefill from Documents <span style="font-size:0.75rem;font-weight:400;color:#888">(optional)</span></div>', unsafe_allow_html=True)
+    st.caption("Upload your renewal notice or current insurance slip — we'll extract your details automatically.")
+
+    api_key = st.text_input("Anthropic API Key", type="password",
+                            placeholder="sk-ant-...",
+                            help="Required for document reading. Get one at console.anthropic.com. Your key is never stored.")
+
+    uploaded_files = st.file_uploader(
+        "Drag and drop your renewal notice or insurance slip here",
+        type=["pdf", "png", "jpg", "jpeg"],
+        accept_multiple_files=True,
+        label_visibility="visible"
+    )
+
+    if uploaded_files and api_key:
+        if st.button("🔍  Extract Details from Documents", use_container_width=True):
+            with st.spinner("Reading your documents..."):
+                try:
+                    import anthropic
+                    import base64
+
+                    client = anthropic.Anthropic(api_key=api_key)
+
+                    # Build content blocks for each uploaded file
+                    content = []
+                    for f in uploaded_files:
+                        file_bytes = f.read()
+                        b64 = base64.standard_b64encode(file_bytes).decode("utf-8")
+                        media_type = f.type if f.type else "application/pdf"
+                        if media_type in ["image/png", "image/jpeg", "image/jpg"]:
+                            content.append({
+                                "type": "image",
+                                "source": {"type": "base64", "media_type": media_type, "data": b64}
+                            })
+                        else:
+                            content.append({
+                                "type": "document",
+                                "source": {"type": "base64", "media_type": "application/pdf", "data": b64}
+                            })
+
+                    content.append({
+                        "type": "text",
+                        "text": """Extract all available details from this insurance document and return ONLY a JSON object with these exact keys (use null for anything not found):
+{
+  "year": <integer vehicle year>,
+  "make": <string>,
+  "model": <string>,
+  "variant": <string>,
+  "rego": <string registration number>,
+  "rego_state": <one of: NSW, VIC, QLD, WA, SA, TAS, ACT, NT>,
+  "cover_type": <one of: Comprehensive, Third Party Fire & Theft, Third Party Only>,
+  "sum_insured": <one of: Market Value, Agreed Value>,
+  "annual_kms": <one of: Under 10,000 / 10,000 – 15,000 / 15,000 – 20,000 / 20,000 – 25,000 / Over 25,000>,
+  "overnight_suburb": <string>,
+  "overnight_postcode": <string>,
+  "excess": <integer>,
+  "previous_insurer": <string insurer name>,
+  "d1_name": <string full name of main/primary driver>,
+  "d1_dob": <string date of birth in DD/MM/YY format>,
+  "d1_gender": <one of: Female, Male, Other>,
+  "d2_name": <string full name of second driver or null>,
+  "d2_dob": <string date of birth in DD/MM/YY format or null>,
+  "d2_gender": <one of: Female, Male, Other, or null>
+}
+Return only the JSON object, no other text."""
+                    })
+
+                    response = client.messages.create(
+                        model="claude-opus-4-5",
+                        max_tokens=1000,
+                        messages=[{"role": "user", "content": content}]
+                    )
+
+                    import json
+                    raw = response.content[0].text.strip()
+                    # Strip markdown fences if present
+                    if raw.startswith("```"):
+                        raw = raw.split("```")[1]
+                        if raw.startswith("json"):
+                            raw = raw[4:]
+                    extracted = json.loads(raw.strip())
+
+                    # Merge into session state — only overwrite non-null values
+                    vehicle_fields = ["year","make","model","variant","rego","rego_state",
+                                      "cover_type","sum_insured","annual_kms",
+                                      "overnight_suburb","overnight_postcode","excess","previous_insurer"]
+                    driver_fields = ["d1_name","d1_dob","d1_gender","d2_name","d2_dob","d2_gender"]
+
+                    updated_v = dict(st.session_state.vehicle)
+                    updated_d = dict(st.session_state.drivers)
+                    filled = []
+
+                    for k in vehicle_fields:
+                        if extracted.get(k) is not None:
+                            updated_v[k] = extracted[k]
+                            filled.append(k.replace("_"," ").title())
+                    for k in driver_fields:
+                        if extracted.get(k) is not None:
+                            updated_d[k] = extracted[k]
+                            filled.append(k.replace("_"," ").title())
+
+                    st.session_state.vehicle = updated_v
+                    st.session_state.drivers = updated_d
+
+                    if filled:
+                        st.success(f"✅ Extracted and prefilled: {', '.join(filled)}. Review the fields below and adjust anything that looks wrong, then hit Save.")
+                    else:
+                        st.warning("Couldn't extract any fields from the document. Try a clearer image or PDF.")
+
+                    st.rerun()
+
+                except json.JSONDecodeError:
+                    st.error("Couldn't parse the extracted data. Try again or fill in the fields manually.")
+                except Exception as e:
+                    st.error(f"Error reading document: {str(e)}")
+
+    elif uploaded_files and not api_key:
+        st.warning("Enter your Anthropic API key above to extract details from the uploaded documents.")
+
+    st.markdown("---")
     st.markdown('<div class="section-title">Vehicle Details</div>', unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
