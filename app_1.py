@@ -9,6 +9,12 @@ st.set_page_config(
     layout="wide"
 )
 
+def fmt_date(d):
+    """Format a date object as DD/MM/YYYY."""
+    if isinstance(d, date):
+        return d.strftime("%d/%m/%Y")
+    return str(d)
+
 # ── Styling ──────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -290,7 +296,7 @@ with tab2:
                     "cover": cover,
                     "sum_type": sum_type,
                     "quote_ref": quote_ref,
-                    "valid_until": valid_until.strftime("%-d %b %Y"),
+                    "valid_until": fmt_date(valid_until),
                     "roadside": roadside,
                     "hire_car": hire_car,
                     "windscreen": windscreen,
@@ -340,7 +346,7 @@ with tab3:
                 f"🚗 <strong>{vehicle_str}</strong> &nbsp;·&nbsp; "
                 f"{v.get('cover_type','Comprehensive')} &nbsp;·&nbsp; "
                 f"{v.get('sum_insured','Market Value')} &nbsp;·&nbsp; "
-                f"Start: {v.get('start_date', '—')}"
+                f"Start: {fmt_date(v.get('start_date', '—'))}"
                 f"</div>",
                 unsafe_allow_html=True
             )
@@ -440,7 +446,7 @@ with tab3:
             st.download_button(
                 "⬇️  Download as CSV",
                 data=csv,
-                file_name=f"motor_quotes_{date.today()}.csv",
+                file_name=f"motor_quotes_{date.today().strftime('%d%m%Y')}.csv",
                 mime="text/csv",
                 use_container_width=True
             )
