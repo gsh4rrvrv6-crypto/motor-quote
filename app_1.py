@@ -108,12 +108,12 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     with col1:
         year = st.number_input("Year", min_value=1990, max_value=2030,
-                               value=st.session_state.vehicle.get("year", 2021), step=1)
-        make = st.text_input("Make", value=st.session_state.vehicle.get("make", "Mercedes-Benz"))
-        model = st.text_input("Model", value=st.session_state.vehicle.get("model", "GLC 200"))
+                               value=st.session_state.vehicle.get("year", 2020), step=1)
+        make = st.text_input("Make", value=st.session_state.vehicle.get("make", ""))
+        model = st.text_input("Model", value=st.session_state.vehicle.get("model", ""))
     with col2:
         variant = st.text_input("Variant / Series",
-                                value=st.session_state.vehicle.get("variant", "X253 MY21 4D Wagon"))
+                                value=st.session_state.vehicle.get("variant", ""))
         rego = st.text_input("Registration Number",
                              value=st.session_state.vehicle.get("rego", ""))
         rego_state = st.selectbox("Rego State",
@@ -152,7 +152,7 @@ with tab1:
     with col3:
         usage = st.multiselect("Vehicle Usage",
                                ["Private", "Commute", "Business"],
-                               default=st.session_state.vehicle.get("usage", ["Private", "Commute"]))
+                               default=st.session_state.vehicle.get("usage", ["Private"]))
         finance = st.selectbox("Financed?", ["No", "Yes"],
                                index=["No","Yes"].index(
                                    st.session_state.vehicle.get("finance", "No")))
@@ -163,12 +163,12 @@ with tab1:
     with col1:
         start_date = st.date_input("Policy Start Date",
                                    value=st.session_state.vehicle.get(
-                                       "start_date", date(2026, 7, 14)))
+                                       "start_date", date.today()))
         previous_insurer = st.text_input("Previous Insurer",
-                                         value=st.session_state.vehicle.get("previous_insurer", "GIO"))
+                                         value=st.session_state.vehicle.get("previous_insurer", ""))
     with col2:
         excess = st.number_input("Basic Excess ($)", min_value=0, max_value=5000,
-                                 value=st.session_state.vehicle.get("excess", 750), step=50)
+                                 value=st.session_state.vehicle.get("excess", 500), step=50)
 
     st.markdown('<div class="section-title" style="margin-top:1.5rem">Drivers</div>',
                 unsafe_allow_html=True)
@@ -180,7 +180,7 @@ with tab1:
                                 value=st.session_state.drivers.get("d1_name", ""))
         d1_dob = st.date_input("Date of Birth", key="d1_dob",
                                value=st.session_state.drivers.get(
-                                   "d1_dob", date(1986, 2, 5)),
+                                   "d1_dob", date(1990, 1, 1)),
                                min_value=date(1920, 1, 1))
         d1_gender = st.selectbox("Gender", ["Female", "Male", "Other"], key="d1_gender",
                                  index=["Female","Male","Other"].index(
@@ -203,7 +203,7 @@ with tab1:
                                 value=st.session_state.drivers.get("d2_name", ""))
         d2_dob = st.date_input("Date of Birth", key="d2_dob",
                                value=st.session_state.drivers.get(
-                                   "d2_dob", date(1985, 2, 22)),
+                                   "d2_dob", date(1990, 1, 1)),
                                min_value=date(1920, 1, 1))
         d2_gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="d2_gender",
                                  index=["Male","Female","Other"].index(
@@ -259,7 +259,7 @@ with tab2:
         with col2:
             monthly_premium = st.number_input("Monthly Premium ($) — if offered",
                                               min_value=0.0, step=0.01, format="%.2f")
-            quote_excess = st.number_input("Excess ($)", min_value=0, step=50, value=750)
+            quote_excess = st.number_input("Excess ($)", min_value=0, step=50, value=500)
             cover = st.selectbox("Cover Type",
                                  ["Comprehensive", "Third Party Fire & Theft", "Third Party Only"])
         with col3:
