@@ -53,54 +53,68 @@ tab1, tab2, tab3, tab4 = st.tabs(["📋 Vehicle & Drivers", "💰 Add Quotes", "
 # ════════════════════════════════════════════════════════════════════════════
 with tab1:
 
-    # ── Free document prefill via Claude.ai ──────────────────────────────────
+    # ── Prefill via Claude in Chrome ─────────────────────────────────────────
     st.markdown('<div class="section-title">📄 Prefill from Documents <span style="font-size:0.75rem;font-weight:400;color:#888">(optional — free)</span></div>', unsafe_allow_html=True)
 
-    with st.expander("How to prefill your details from a renewal notice or insurance slip", expanded=False):
+    with st.expander("✨ Auto-fill this form from your renewal notice or insurance slip", expanded=False):
         st.markdown("""
-**This takes about 2 minutes and is completely free.**
+**This fills the form automatically — completely free.**
 
-1. Open **[claude.ai](https://claude.ai)** in a new tab
-2. Start a new chat
+**What you need:** The [Claude in Chrome extension](https://chrome.google.com/webstore/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh) installed in your browser.
+
+**Steps:**
+1. Open **[claude.ai](https://claude.ai)** in a new tab — keep this tab open too
+2. Start a new chat in Claude
 3. Upload your renewal notice or insurance slip (PDF or photo)
-4. Copy and paste the prompt below into the chat and hit send
-5. Claude will list all your details — copy them and fill in the fields below
+4. Copy the prompt below and paste it into Claude with your document
+5. Claude will read your document and automatically fill in this form
 """)
 
-        prefill_prompt = """I've uploaded my motor insurance renewal notice / insurance slip.
+        # Detect the app's own URL for the prompt
+        try:
+            from streamlit.web.server.websocket_headers import _get_websocket_headers
+            app_url = "this page"
+        except Exception:
+            app_url = "this page"
 
-Please extract the following details and present them as a simple numbered list:
+        chrome_prefill_prompt = """I've uploaded my motor insurance renewal notice or insurance slip.
 
-1. Vehicle year
-2. Vehicle make
-3. Vehicle model
-4. Vehicle variant / series
-5. Registration number
-6. Registration state
-7. Cover type (Comprehensive / Third Party Fire & Theft / Third Party Only)
-8. Sum insured type (Market Value or Agreed Value)
-9. Annual kilometres
-10. Overnight parking suburb
-11. Overnight parking postcode
-12. Basic excess amount
-13. Current / previous insurer name
-14. Main driver full name
-15. Main driver date of birth (DD/MM/YY)
-16. Main driver gender
-17. Additional driver full name (if any)
-18. Additional driver date of birth (DD/MM/YY, if any)
-19. Additional driver gender (if any)
+Using the Claude in Chrome extension, please:
 
-If any detail is not shown in the document, just write "not found" next to that item."""
+1. Extract all the insurance details from my uploaded document
+2. Switch to the Motor Quote Comparison app tab (it should be open in your browser)
+3. Fill in the form fields in the "Vehicle & Drivers" tab using the details from my document
+
+Here are the fields to fill in and where to find them in the document:
+- Year, Make, Model, Variant — from the vehicle description
+- Registration number and state — from the rego details
+- Cover type — Comprehensive / Third Party Fire & Theft / Third Party Only
+- Sum insured — Market Value or Agreed Value
+- Overnight parking suburb and postcode — from the garaging address
+- Basic excess — the standard/basic excess amount in dollars
+- Previous insurer — the name of the insurer on this document
+- Main driver name, date of birth (DD/MM/YY), gender
+- Additional driver name, date of birth (DD/MM/YY), gender (if listed)
+
+For any dropdown fields, select the closest matching option.
+For any fields not found in the document, leave them blank.
+
+If any permission prompts appear from the Chrome extension, select "Always allow".
+
+Once all fields are filled, click the "Save Details" button at the bottom of the form."""
 
         st.text_area(
-            "Copy this prompt into Claude:",
-            value=prefill_prompt,
-            height=200,
+            "Copy this prompt into Claude (with your document attached):",
+            value=chrome_prefill_prompt,
+            height=220,
             label_visibility="visible"
         )
 
-        st.markdown("👉 [Open Claude.ai in a new tab](https://claude.ai) — upload your document and paste the prompt above.")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("👉 [Open Claude.ai in a new tab](https://claude.ai)")
+        with col2:
+            st.markdown("👉 [Get the Chrome extension](https://chromewebstore.google.com/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh)")
 
     st.markdown("---")
     st.markdown('<div class="section-title">Vehicle Details</div>', unsafe_allow_html=True)
