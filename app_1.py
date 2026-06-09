@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date, datetime
+from collections import Counter
 
 st.set_page_config(
     page_title="Motor Quote Comparison",
@@ -16,6 +17,47 @@ def fmt_date(d):
 
 def today_str():
     return date.today().strftime("%d/%m/%y")
+
+# The underwriter behind each brand — the company that holds the risk and pays claims
+UNDERWRITERS = {
+    "GIO": "AAI Limited (Suncorp Group)",
+    "AAMI": "AAI Limited (Suncorp Group)",
+    "Suncorp": "AAI Limited (Suncorp Group)",
+    "APIA": "AAI Limited (Suncorp Group)",
+    "Shannons": "AAI Limited (Suncorp Group)",
+    "Bingle": "AAI Limited (Suncorp Group)",
+    "NRMA": "Insurance Australia Group (IAG)",
+    "ROLLiN'": "Insurance Australia Group (IAG)",
+    "RACV": "Insurance Manufacturers of Australia (IAG/RACV JV)",
+    "ANZ": "CGU (IAG)",
+    "Bendigo Bank": "CGU (IAG)",
+    "RACQ": "RACQ Insurance",
+    "BOQ": "RACQ Insurance",
+    "ALDI": "RACQ Insurance (via Honey)",
+    "Budget Direct": "Auto & General",
+    "Qantas": "Auto & General",
+    "Coles": "Auto & General",
+    "ING": "Auto & General",
+    "Woolworths": "Hollard",
+    "Real Insurance": "Hollard",
+    "Australian Seniors": "Hollard",
+    "CommBank": "Hollard",
+    "Huddle": "Hollard",
+    "Allianz": "Allianz",
+    "Westpac": "Allianz",
+    "St.George": "Allianz",
+    "BankSA": "Allianz",
+    "Bank of Melbourne": "Allianz",
+    "NAB": "Allianz",
+    "HSBC": "Allianz",
+    "TIO": "Allianz",
+    "QBE": "QBE",
+    "Stella": "QBE",
+    "KOBA": "Pacific International Insurance",
+    "RAA": "RAA Insurance",
+    "RAC": "RAC Insurance (WA)",
+    "RACT": "RACT Insurance",
+}
 
 # ── Styling ───────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -46,36 +88,44 @@ if "drivers" not in st.session_state:
 st.markdown('<div class="main-header">🚗 Motor Quote Comparison</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Enter your vehicle and driver details, add quotes from each insurer, then compare side by side.</div>', unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4 = st.tabs(["📋 Vehicle & Drivers", "💰 Add Quotes", "📊 Compare", "🤖 Get Quotes"])
+tab_help, tab1, tab2, tab3, tab4 = st.tabs(["📖 Instructions", "📋 Vehicle & Drivers", "💰 Add Quotes", "📊 Compare", "🤖 Get Quotes"])
 
 # ════════════════════════════════════════════════════════════════════════════
-# TAB 1 — Vehicle & Drivers
+# TAB 0 — Instructions
 # ════════════════════════════════════════════════════════════════════════════
-with tab1:
+with tab_help:
+    st.markdown('<div class="section-title">How This Tool Works</div>', unsafe_allow_html=True)
 
-    # ── Prefill via Claude in Chrome ─────────────────────────────────────────
-    st.markdown('<div class="section-title">📄 Prefill from Documents <span style="font-size:0.75rem;font-weight:400;color:#888">(optional — free)</span></div>', unsafe_allow_html=True)
+    st.markdown("""
+Compare car insurance quotes from **35+ Australian insurers** side by side. The workflow:
 
-    with st.expander("✨ Auto-fill this form from your renewal notice or insurance slip", expanded=False):
+1. **📋 Vehicle & Drivers** — enter your car, driver and policy details once, then hit **Save Details**. You can auto-fill this from your renewal notice (see below).
+2. **🤖 Get Quotes** — for each insurer, copy the ready-made automation prompt into a Claude chat. Claude opens that insurer's website, fills in the quote form using your saved details, and reports back the price.
+3. **💰 Add Quotes** — enter each premium, excess and inclusions as you receive them.
+4. **📊 Compare** — see every quote side by side with the best value highlighted, and download the comparison as a CSV.
+""")
+
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">What You Need</div>', unsafe_allow_html=True)
+    st.markdown("""
+- A **Claude account** — sign up free at [claude.ai](https://claude.ai)
+- The **[Claude in Chrome extension](https://chromewebstore.google.com/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh)** — this is what lets Claude fill in forms in your browser
+
+You can also skip the automation entirely: visit each insurer's website yourself, get quotes manually, and just use the **Add Quotes** and **Compare** tabs.
+""")
+
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Auto-Fill Your Details from a Document</div>', unsafe_allow_html=True)
+
+    with st.expander("✨ Fill in the Vehicle & Drivers form from your renewal notice or insurance slip", expanded=False):
         st.markdown("""
 **This fills the form automatically — completely free.**
 
-**What you need:** The [Claude in Chrome extension](https://chrome.google.com/webstore/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh) installed in your browser.
-
 **Steps:**
-1. Open **[claude.ai](https://claude.ai)** in a new tab — keep this tab open too
+1. Keep this app open, and open **[claude.ai](https://claude.ai)** in another tab
 2. Start a new chat in Claude
 3. Upload your renewal notice or insurance slip (PDF or photo)
 4. Copy the prompt below and paste it into Claude with your document
-5. Claude will read your document and automatically fill in this form
+5. Claude will read your document and fill in the Vehicle & Drivers form for you
 """)
-
-        # Detect the app's own URL for the prompt
-        try:
-            from streamlit.web.server.websocket_headers import _get_websocket_headers
-            app_url = "this page"
-        except Exception:
-            app_url = "this page"
 
         chrome_prefill_prompt = """I've uploaded my motor insurance renewal notice or insurance slip.
 
@@ -116,7 +166,21 @@ Once all fields are filled, click the "Save Details" button at the bottom of the
         with col2:
             st.markdown("👉 [Get the Chrome extension](https://chromewebstore.google.com/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh)")
 
-    st.markdown("---")
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">Good to Know</div>', unsafe_allow_html=True)
+    st.markdown("""
+- The automation prompts in **Get Quotes** only appear after you've saved your details in **Vehicle & Drivers**
+- State motoring clubs only insure vehicles garaged in their home state: RAC (WA), RACQ (QLD), RAA (SA), RACV (VIC), RACT (TAS), TIO (NT)
+- APIA and Australian Seniors are designed for over-50s
+- Shannons is an enthusiast insurer and may finish the quote over the phone
+- KOBA charges per kilometre — great for low-km drivers; its prompt reports an annual estimate for comparison
+- Quotes usually stay valid for 2–4 weeks — record the expiry date when adding them
+""")
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 1 — Vehicle & Drivers
+# ════════════════════════════════════════════════════════════════════════════
+with tab1:
+    st.caption("💡 Tip: you can auto-fill this form from your renewal notice — see the 📖 Instructions tab.")
     st.markdown('<div class="section-title">Vehicle Details</div>', unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
@@ -233,8 +297,13 @@ with tab2:
     st.markdown('<div class="section-title">Add a Quote</div>', unsafe_allow_html=True)
     st.caption("Enter the details from each insurer quote you've obtained.")
 
-    insurers = ["GIO", "AAMI", "NRMA", "Youi", "Budget Direct", "Allianz",
-                "QBE", "Suncorp", "RAA", "RACV", "RACQ", "Other"]
+    insurers = ["GIO", "AAMI", "NRMA", "Budget Direct", "Allianz",
+                "QBE", "Suncorp", "APIA", "Shannons", "Qantas", "Coles",
+                "Woolworths", "Real Insurance", "Bingle", "ROLLiN'", "Huddle",
+                "ALDI", "ING", "CommBank", "Australian Seniors",
+                "Stella", "KOBA", "TIO", "WFI", "Westpac", "St.George", "BankSA",
+                "Bank of Melbourne", "NAB", "ANZ", "Bendigo Bank", "BOQ", "HSBC",
+                "RAA", "RAC", "RACV", "RACQ", "RACT", "Other"]
 
     with st.form("add_quote_form", clear_on_submit=True):
         col1, col2, col3 = st.columns(3)
@@ -336,6 +405,13 @@ with tab3:
 
         st.markdown("---")
         st.markdown('<div class="section-title">Quote Breakdown</div>', unsafe_allow_html=True)
+        st.caption("Each quote shows the underwriter — the insurance company that actually holds the risk and pays your claims. Brands sharing an underwriter are often variations of the same policy under different branding.")
+
+        uw_counts = Counter(UNDERWRITERS.get(q["insurer"]) for q in quotes if UNDERWRITERS.get(q["insurer"]))
+        shared = {u: c for u, c in uw_counts.items() if c > 1}
+        if shared:
+            shared_str = " · ".join(f"**{u}** sits behind {c} of your quotes" for u, c in shared.items())
+            st.info(f"💡 {shared_str}. These are likely the same underlying policy priced differently — compare their inclusions closely.")
 
         cols = st.columns(min(len(sorted_quotes), 3))
         for i, q in enumerate(sorted_quotes):
@@ -361,11 +437,15 @@ with tab3:
                            if q["quote_ref"] else "")
                 notes_str = (f'<div style="font-size:0.8rem;color:#666;margin-top:8px;border-top:1px solid #e0e0e0;padding-top:8px">{q["notes"]}</div>'
                              if q["notes"] else "")
+                uw = UNDERWRITERS.get(q["insurer"], "")
+                uw_str = (f'<div style="font-size:0.72rem;color:#999;margin-bottom:6px">Underwritten by {uw}</div>'
+                          if uw else "")
 
                 st.markdown(f"""
                 <div class="{card_class}">
                     {badge}
-                    <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px">{q['insurer']}</div>
+                    <div style="font-size:1.1rem;font-weight:700;margin-bottom:2px">{q['insurer']}</div>
+                    {uw_str}
                     <div class="price-big">${q['annual_premium']:,.2f}<span style="font-size:1rem;font-weight:400">/yr</span></div>
                     {monthly_str}
                     {saving_str}
@@ -391,6 +471,7 @@ with tab3:
             if q["windscreen"]: inclusions.append("Windscreen")
             table_data.append({
                 "Insurer": q["insurer"],
+                "Underwriter": UNDERWRITERS.get(q["insurer"], "—"),
                 "Annual ($)": f"${q['annual_premium']:,.2f}",
                 "Monthly ($)": f"${q['monthly_premium']:,.2f}" if q["monthly_premium"] > 0 else "—",
                 "Excess ($)": f"${q['excess']:,}",
@@ -431,16 +512,7 @@ with tab4:
     if not v:
         st.warning("⚠️ Please fill in your Vehicle & Driver details first (Tab 1), then come back here.")
     else:
-        st.markdown("""
-        **How this works:**
-        1. Make sure you have the **Claude in Chrome** extension installed in your browser
-        2. Click **Copy Prompt** next to the insurer you want
-        3. Open a new Claude chat at [claude.ai](https://claude.ai)
-        4. Paste the prompt and hit send — Claude will fill out the quote form automatically
-        5. Come back here and enter the quoted price in the **Add Quotes** tab
-        """)
-
-        st.info("💡 Youi always delivers pricing via a phone call — they will call you with the quote rather than show it on screen.")
+        st.caption("Copy a prompt below into a new Claude chat (with the Chrome extension active) — Claude fills out that insurer's quote form automatically and reports back the price. Full setup steps are in the 📖 Instructions tab.")
 
         st.markdown("---")
 
@@ -550,26 +622,6 @@ Notes:
 
 Once the final premium is shown, tell me the annual premium, excess, quote reference number, any promo codes applied, and what inclusions are listed."""
             },
-            "Youi": {
-                "url": "https://www.youi.com.au/car-insurance",
-                "notes": "⚠️ Youi delivers pricing via phone call, not on screen. They will call you with the quote. A mobile PIN verification appears mid-quote.",
-                "prompt": f"""Using the Claude in Chrome extension, please start a comprehensive car insurance quote from Youi.
-
-Go to: https://www.youi.com.au/car-insurance
-
-Fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
-
-{context}
-
-Important notes:
-- Youi will ask for a mobile number and send a PIN verification mid-quote — enter the PIN when it arrives
-- Youi does NOT show the price on screen — they will call you on your mobile with the quote
-- Make sure your mobile number is correct when entering contact details
-- If asked about at-fault claims, select None in the last 3 years
-- Complete the form as far as possible until they confirm they will call you
-
-Let me know once the form is submitted and Youi has confirmed they will call with the quote."""
-            },
             "Allianz": {
                 "url": "https://www.allianz.com.au/car-insurance/",
                 "notes": "",
@@ -587,6 +639,576 @@ Notes:
 - If asked about at-fault claims, select None in the last 3 years
 
 Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "QBE": {
+                "url": "https://www.qbe.com/au/car-insurance",
+                "notes": "",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from QBE.
+
+Go to: https://www.qbe.com/au/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to qbe.com/au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Select market value (not agreed value)
+- If asked about modifications, select None
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "APIA": {
+                "url": "https://www.apia.com.au/car-insurance.html",
+                "notes": "Part of Suncorp Group — same platform family as GIO/AAMI. Designed for over-50s; eligibility criteria may apply.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from APIA.
+
+Go to: https://www.apia.com.au/car-insurance.html
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- APIA shares the same platform as GIO and AAMI — address format: enter suburb name and select from dropdown
+- APIA is designed for over-50s — if an eligibility question blocks the quote, stop and let me know
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "Shannons": {
+                "url": "https://www.shannons.com.au/request-a-quote/",
+                "notes": "⚠️ Enthusiast insurer (Suncorp Group). The online form often hands off to a consultant — pricing may come via a call on 13 46 46. Geared to motoring enthusiasts; standard vehicles may not be eligible.",
+                "prompt": f"""Using the Claude in Chrome extension, please start a comprehensive car insurance quote from Shannons.
+
+Go to: https://www.shannons.com.au/request-a-quote/
+
+Fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Important notes:
+- Shannons is an enthusiast insurer — the online flow may hand off to their Online Assistant or offer a call with a consultant instead of showing a price on screen
+- Complete the form as far as possible; if it asks to connect you to a consultant or requests a phone call, accept and let me know
+- If asked about at-fault claims, select None in the last 3 years
+
+If a premium is shown on screen, tell me the annual premium, excess, quote reference number, and inclusions. If pricing requires a call, let me know that the form was submitted."""
+            },
+            "Qantas": {
+                "url": "https://insurance.qantas.com/car-insurance",
+                "notes": "Underwritten by Auto & General (same as Budget Direct and Coles) — quote flow is similar. Earns Qantas Points; have your Frequent Flyer number handy.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Qantas Insurance.
+
+Go to: https://insurance.qantas.com/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow". Qantas uses the same underlying platform as Budget Direct, so the overnight address may be asked for BEFORE the rego lookup — this is normal.
+
+{context}
+
+Notes:
+- Address format: enter full address including state and postcode e.g. "Lane Cove NSW 2066"
+- Select market value (not agreed value)
+- If asked for a Qantas Frequent Flyer number, skip it or leave blank unless I've given you one
+- Apply any online discount if offered
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, any points offer shown, and what inclusions are listed."""
+            },
+            "Coles": {
+                "url": "https://www.coles.com.au/insurance/car-insurance",
+                "notes": "Underwritten by Auto & General (same as Budget Direct and Qantas). 15% online discount on first-year premium for new policies bought online.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Coles Insurance.
+
+Go to: https://www.coles.com.au/insurance/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow". Coles uses the same underlying platform as Budget Direct, so the overnight address may be asked for BEFORE the rego lookup — this is normal.
+
+{context}
+
+Notes:
+- Address format: enter full address including state and postcode e.g. "Lane Cove NSW 2066"
+- Select market value (not agreed value)
+- A 15% online discount should apply automatically for new policies — confirm it's reflected in the price
+- If asked for a Flybuys number, skip it or leave blank unless I've given you one
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, whether the online discount was applied, and what inclusions are listed."""
+            },
+            "Woolworths": {
+                "url": "https://insurance.woolworths.com.au/car-insurance.html",
+                "notes": "Underwritten by Hollard. Check for Everyday Rewards discounts.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Woolworths Insurance.
+
+Go to: https://insurance.woolworths.com.au/car-insurance.html
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to insurance.woolworths.com.au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Select market value (not agreed value)
+- If asked for an Everyday Rewards card number, skip it or leave blank unless I've given you one
+- Apply any online discount if offered
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, any discounts applied, and what inclusions are listed."""
+            },
+            "Real Insurance": {
+                "url": "https://www.realinsurance.com.au/car-insurance",
+                "notes": "Underwritten by Hollard. Offers Pay As You Drive — worth comparing if annual kilometres are low.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Real Insurance.
+
+Go to: https://www.realinsurance.com.au/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Select market value (not agreed value)
+- Real Insurance offers a "Pay As You Drive" option for low-kilometre drivers — if the annual kilometres above are under 15,000, also note the Pay As You Drive price if it's shown
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed — and the Pay As You Drive price if applicable."""
+            },
+            "Suncorp": {
+                "url": "https://www.suncorp.com.au/insurance/car.html",
+                "notes": "Part of Suncorp Group — same platform family as GIO and AAMI.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Suncorp.
+
+Go to: https://www.suncorp.com.au/insurance/car.html
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to suncorp.com.au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Suncorp shares the same platform family as GIO and AAMI — address format: enter suburb name and select from dropdown
+- Select market value (not agreed value)
+- If asked about modifications, select None
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "RACV": {
+                "url": "https://www.racv.com.au/insurance/car-insurance.html",
+                "notes": "Victorian motoring club. Same underwriter as NRMA (IAG joint venture) — quote flow may be similar. Generally for vehicles garaged in Victoria.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from RACV.
+
+Go to: https://www.racv.com.au/insurance/car-insurance.html
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to racv.com.au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- RACV generally insures vehicles garaged in Victoria — if the form says the location isn't eligible, stop and let me know
+- If prompted to log in, look for a "Continue without logging in" or guest option (RACV shares its underwriter with NRMA)
+- If asked for an RACV membership number, skip it or leave blank unless I've given you one
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "RACQ": {
+                "url": "https://www.racq.com.au/insurance/car-insurance",
+                "notes": "Queensland motoring club — generally for vehicles garaged in QLD. Member discounts may apply.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from RACQ.
+
+Go to: https://www.racq.com.au/insurance/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to racq.com.au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- RACQ generally insures vehicles garaged in Queensland — if the form says the location isn't eligible, stop and let me know
+- If asked for an RACQ membership number, skip it or leave blank unless I've given you one
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, any member discounts applied, and what inclusions are listed."""
+            },
+            "RAA": {
+                "url": "https://www.raa.com.au/insurance/car-insurance",
+                "notes": "South Australian motoring club — generally for vehicles garaged in SA. Member discounts may apply.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from RAA.
+
+Go to: https://www.raa.com.au/insurance/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to raa.com.au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- RAA generally insures vehicles garaged in South Australia — if the form says the location isn't eligible, stop and let me know
+- If asked for an RAA membership number, skip it or leave blank unless I've given you one
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, any member discounts applied, and what inclusions are listed."""
+            },
+            "RAC": {
+                "url": "https://rac.com.au/car-motorcycle/car-insurance",
+                "notes": "Western Australian motoring club — car insurance only for vehicles garaged in WA. Member discounts may apply.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from RAC (WA).
+
+Go to: https://rac.com.au/car-motorcycle/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to rac.com.au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- RAC only insures vehicles garaged in Western Australia — if the form says the location isn't eligible, stop and let me know
+- If asked for an RAC membership number, skip it or leave blank unless I've given you one
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, any member discounts applied, and what inclusions are listed."""
+            },
+            "Bingle": {
+                "url": "https://www.bingle.com.au",
+                "notes": "Suncorp Group's online-only budget brand — short quote flow, minimal options, no phone support.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Bingle.
+
+Go to: https://www.bingle.com.au
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Bingle is a stripped-back online-only brand — the quote flow is short with fewer questions than most insurers
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "ROLLiN'": {
+                "url": "https://www.rollininsurance.com.au",
+                "notes": "IAG brand. Subscription-style cover — pricing is shown monthly with no annual lock-in.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from ROLLiN'.
+
+Go to: https://www.rollininsurance.com.au
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- ROLLiN' prices its cover as a monthly subscription rather than an annual premium
+- Select market value if the option is offered
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final price is shown, tell me the monthly premium, the annual equivalent (monthly times 12), excess, quote reference number, and what inclusions are listed."""
+            },
+            "Huddle": {
+                "url": "https://www.huddle.com.au/car-insurance",
+                "notes": "Online insurer with a fast quote flow.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Huddle.
+
+Go to: https://www.huddle.com.au/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to huddle.com.au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Select market value (not agreed value) if the option is offered
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "ALDI": {
+                "url": "https://www.aldiinsurance.com.au/car/",
+                "notes": "Distributed with Honey Insurance. Comprehensive cover only — no third party options and no roadside assistance add-on.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a car insurance quote from ALDI Insurance.
+
+Go to: https://www.aldiinsurance.com.au/car/
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- ALDI only offers Comprehensive cover — there are no third party options
+- ALDI does not offer roadside assistance, so don't look for it as an add-on
+- Select market value if the option is offered
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "ING": {
+                "url": "https://www.ing.com.au/insurance/car-insurance.html",
+                "notes": "Underwritten by Auto & General (same as Budget Direct) — quote flow is similar. You don't need to be an ING customer.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from ING.
+
+Go to: https://www.ing.com.au/insurance/car-insurance.html
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to ing.com.au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow". ING uses the same underlying platform as Budget Direct, so the overnight address may be asked for BEFORE the rego lookup — this is normal.
+
+{context}
+
+Notes:
+- You don't need to be an ING banking customer — do not log in
+- Address format: enter full address including state and postcode e.g. "Lane Cove NSW 2066"
+- Select market value (not agreed value)
+- Apply any online discount if offered
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, any discounts applied, and what inclusions are listed."""
+            },
+            "CommBank": {
+                "url": "https://www.commbank.com.au/insurance/car-insurance.html",
+                "notes": "Underwritten by Hollard. You don't need to be a CommBank customer — use the guest quote option rather than logging in to NetBank.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from CommBank.
+
+Go to: https://www.commbank.com.au/insurance/car-insurance.html
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to commbank.com.au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Do NOT log in to NetBank — look for the option to get a quote as a guest / without logging in
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "Australian Seniors": {
+                "url": "https://www.seniors.com.au/car-insurance",
+                "notes": "Same stable as Real Insurance (Hollard). Designed for over-50s — eligibility criteria may apply. Seniors discount available.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Australian Seniors.
+
+Go to: https://www.seniors.com.au/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Australian Seniors is designed for over-50s — if an age eligibility question blocks the quote, stop and let me know
+- Select market value (not agreed value)
+- Note any seniors discount applied to the price
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, any discounts applied, and what inclusions are listed."""
+            },
+            "RACT": {
+                "url": "https://www.ract.com.au/insurance/car-insurance",
+                "notes": "Tasmanian motoring club — generally for vehicles garaged in TAS. Member discounts may apply.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from RACT.
+
+Go to: https://www.ract.com.au/insurance/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to ract.com.au and navigate to Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- RACT generally insures vehicles garaged in Tasmania — if the form says the location isn't eligible, stop and let me know
+- If asked for an RACT membership number, skip it or leave blank unless I've given you one
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, any member discounts applied, and what inclusions are listed."""
+            },
+            "Stella": {
+                "url": "https://www.stellainsurance.com.au",
+                "notes": "Women-focused brand (open to everyone), QBE-underwritten. Comprehensive only. Doesn't cover all postcodes. Sign-up discount of 5–25% currently running.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Stella.
+
+Go to: https://www.stellainsurance.com.au
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Stella only offers Comprehensive cover
+- Stella doesn't cover all postcodes — if the form says the location isn't covered, stop and let me know
+- A new-customer discount may apply — note whether it's reflected in the price
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, any discount applied, and what inclusions are listed."""
+            },
+            "KOBA": {
+                "url": "https://www.kobainsurance.com.au",
+                "notes": "Pay-per-km cover — an upfront fixed cost while parked plus cents per km driven, measured by a small device they post out. Best for low-km drivers.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a pay-per-km comprehensive car insurance quote from KOBA.
+
+Go to: https://www.kobainsurance.com.au
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- KOBA's pricing is split: an upfront fixed cost covering the car while parked, plus a per-km rate while driving
+- The quote shows three numbers: the upfront fixed cost, the per-km rate, and an annual estimate
+- A small device (the KOBA Rider) gets posted out and plugs in under the dash to measure kms
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the quote is shown, tell me all three numbers — the upfront fixed cost, the per-km rate, and the annual estimate — plus the excess and quote reference. The annual estimate is the figure to use for comparison."""
+            },
+            "TIO": {
+                "url": "https://www.tiofi.com.au",
+                "notes": "Northern Territory insurer (Allianz-owned) — primarily for NT vehicles.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from TIO.
+
+Go to: https://www.tiofi.com.au
+
+Navigate to Car Insurance, click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- TIO primarily insures vehicles in the Northern Territory — if the form says the location isn't eligible, stop and let me know
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "Westpac": {
+                "url": "https://www.westpac.com.au/personal-banking/insurance/car-insurance/",
+                "notes": "Underwritten by Allianz. You don't need to be a Westpac customer — don't log in.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Westpac.
+
+Go to: https://www.westpac.com.au/personal-banking/insurance/car-insurance/
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Do NOT log in to Westpac online banking — the quote works as a guest
+- Westpac car insurance is provided by Allianz, so the quote flow may resemble Allianz's
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "St.George": {
+                "url": "https://www.stgeorge.com.au/personal/insurance/car-insurance",
+                "notes": "Westpac Group brand — same Allianz product as Westpac. BankSA and Bank of Melbourne are identical.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from St.George.
+
+Go to: https://www.stgeorge.com.au/personal/insurance/car-insurance
+
+Click Get a quote and fill in all fields using the details below. If the page doesn't load, go to stgeorge.com.au and navigate to Insurance then Car Insurance. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Do NOT log in — the quote works as a guest
+- St.George car insurance is provided by Allianz (same as Westpac)
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "NAB": {
+                "url": "https://www.nab.com.au/personal/insurance/car",
+                "notes": "Underwritten by Allianz. Up to 10% off the first year for new comprehensive policies bought online.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from NAB.
+
+Go to: https://www.nab.com.au/personal/insurance/car
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Do NOT log in to NAB internet banking — the quote works as a guest
+- An online discount of up to 10% should apply for new comprehensive policies — confirm it's reflected in the price
+- NAB car insurance is issued by Allianz
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, whether the online discount was applied, and what inclusions are listed."""
+            },
+            "ANZ": {
+                "url": "https://www.anz.com.au/personal/insurance/car-insurance/",
+                "notes": "Underwritten by CGU (IAG).",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from ANZ.
+
+Go to: https://www.anz.com.au/personal/insurance/car-insurance/
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Do NOT log in to ANZ internet banking — the quote works as a guest
+- ANZ car insurance is issued by CGU (part of IAG)
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "Bendigo Bank": {
+                "url": "https://www.bendigobank.com.au/personal/insurance/car/",
+                "notes": "Underwritten by CGU (IAG). Not available for vehicles garaged in Victoria.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from Bendigo Bank.
+
+Go to: https://www.bendigobank.com.au/personal/insurance/car/
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Bendigo Bank car insurance is not available for vehicles garaged in Victoria — if the form says the location isn't eligible, stop and let me know
+- Do NOT log in to Bendigo internet banking — the quote works as a guest
+- Issued by CGU (part of IAG); there's a standard Comprehensive and a top-tier Comprehensive Plus — quote the standard Comprehensive unless I say otherwise
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "BOQ": {
+                "url": "https://www.boq.com.au/personal/insurance/",
+                "notes": "Underwritten by RACQ Insurance. Comprehensive only.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from BOQ.
+
+Go to: https://www.boq.com.au/personal/insurance/
+
+Click Get a quote for Car Insurance and fill in all fields using the details below. The quote portal may open at insurance.boq.com.au — that's normal. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- BOQ only offers Comprehensive cover
+- Do NOT log in to BOQ internet banking — the quote works as a guest
+- BOQ car insurance is issued by RACQ Insurance
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, and what inclusions are listed."""
+            },
+            "HSBC": {
+                "url": "https://www.hsbc.com.au/insurance/products/car/",
+                "notes": "Underwritten by Allianz. Up to 10% off the first year for new comprehensive policies bought online.",
+                "prompt": f"""Using the Claude in Chrome extension, please get a comprehensive car insurance quote from HSBC.
+
+Go to: https://www.hsbc.com.au/insurance/products/car/
+
+Click Get a quote and fill in all fields using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Do NOT log in to HSBC online banking — the quote works as a guest
+- HSBC car insurance is issued by Allianz
+- An online discount of up to 10% should apply for new comprehensive policies — confirm it's reflected in the price
+- Select market value (not agreed value)
+- If asked about at-fault claims, select None in the last 3 years
+
+Once the final premium is shown, tell me the annual premium, excess, quote reference number, whether the online discount was applied, and what inclusions are listed."""
             },
         }
 
