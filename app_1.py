@@ -116,7 +116,7 @@ You can also skip the automation entirely: visit each insurer's website yourself
 
     st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Auto-Fill Your Details from a Document</div>', unsafe_allow_html=True)
 
-    with st.expander("✨ Fill in the Vehicle & Drivers form from your renewal notice or insurance slip", expanded=False):
+    with st.expander("✨ Auto-fill from your renewal notice or insurance slip", expanded=False):
 
         chrome_prefill_prompt = """I've uploaded my motor insurance renewal notice or insurance slip.
 
@@ -144,16 +144,8 @@ If any permission prompts appear from the Chrome extension, select "Always allow
 
 Once all fields are filled, click the "Save Details" button at the bottom of the form."""
 
-        st.markdown("""
-**This fills the form automatically — completely free.**
-
-**Steps:**
-1. Keep this app open, and open **[claude.ai](https://claude.ai)** in another tab
-2. Start a new chat in Claude and upload your renewal notice or insurance slip (PDF or photo). 👉 [Get the Chrome extension](https://chromewebstore.google.com/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh) if you haven't already.
-3. Switch back to this tab
-4. Copy the prompt below and paste it into your Claude chat
-""")
-        st.code(chrome_prefill_prompt, language=None)
+        st.markdown("""1. Open **[claude.ai](https://claude.ai)** in another tab · 2. Upload your document · 3. Copy & paste the prompt below · 4. Claude fills in the form for you""")
+        st.text_area("Prompt to copy:", value=chrome_prefill_prompt, height=100, label_visibility="collapsed")
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 1 — Vehicle & Drivers
