@@ -53,7 +53,9 @@ UNDERWRITERS = {
     "TIO": "Allianz",
     "QBE": "QBE",
     "Stella": "QBE",
+    "Elders": "QBE",
     "KOBA": "Pacific International Insurance",
+    "WFI": "Insurance Australia Group (IAG)",
     "RAA": "RAA Insurance",
     "RAC": "RAC Insurance (WA)",
     "RACT": "RACT Insurance",
@@ -88,20 +90,19 @@ if "drivers" not in st.session_state:
 st.markdown('<div class="main-header">🚗 Motor Quote Comparison</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Enter your vehicle and driver details, add quotes from each insurer, then compare side by side.</div>', unsafe_allow_html=True)
 
-tab_help, tab1, tab2, tab3, tab4 = st.tabs(["📖 Instructions", "📋 Vehicle & Drivers", "💰 Add Quotes", "📊 Compare", "🤖 Get Quotes"])
+tab_help, tab4, tab1, tab2, tab3 = st.tabs(["📖 Instructions", "🤖 Get Quotes", "📋 Vehicle & Drivers", "📝 Enter Quotes", "📊 Compare"])
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 0 — Instructions
 # ════════════════════════════════════════════════════════════════════════════
 with tab_help:
-    st.markdown('<div class="section-title">How This Tool Works</div>', unsafe_allow_html=True)
-
-    st.markdown("""
+    with st.expander("📋 How This Tool Works", expanded=True):
+        st.markdown("""
 Compare car insurance quotes from **35+ Australian insurers** side by side. The workflow:
 
 1. **📋 Vehicle & Drivers** — enter your car, driver and policy details once, then hit **Save Details**. You can auto-fill this from your renewal notice (see below).
 2. **🤖 Get Quotes** — for each insurer, copy the ready-made automation prompt into a Claude chat. Claude opens that insurer's website, fills in the quote form using your saved details, and reports back the price.
-3. **💰 Add Quotes** — enter each premium, excess and inclusions as you receive them.
+3. **📝 Enter Quotes** — enter each premium, excess and inclusions as you receive them.
 4. **📊 Compare** — see every quote side by side with the best value highlighted, and download the comparison as a CSV.
 """)
 
@@ -110,22 +111,12 @@ Compare car insurance quotes from **35+ Australian insurers** side by side. The 
 - A **Claude account** — sign up free at [claude.ai](https://claude.ai)
 - The **[Claude in Chrome extension](https://chromewebstore.google.com/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh)** — this is what lets Claude fill in forms in your browser
 
-You can also skip the automation entirely: visit each insurer's website yourself, get quotes manually, and just use the **Add Quotes** and **Compare** tabs.
+You can also skip the automation entirely: visit each insurer's website yourself, get quotes manually, and just use the **Enter Quotes** and **Compare** tabs.
 """)
 
     st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Auto-Fill Your Details from a Document</div>', unsafe_allow_html=True)
 
     with st.expander("✨ Fill in the Vehicle & Drivers form from your renewal notice or insurance slip", expanded=False):
-        st.markdown("""
-**This fills the form automatically — completely free.**
-
-**Steps:**
-1. Keep this app open, and open **[claude.ai](https://claude.ai)** in another tab
-2. Start a new chat in Claude
-3. Upload your renewal notice or insurance slip (PDF or photo)
-4. Copy the prompt below and paste it into Claude with your document
-5. Claude will read your document and fill in the Vehicle & Drivers form for you
-""")
 
         chrome_prefill_prompt = """I've uploaded my motor insurance renewal notice or insurance slip.
 
@@ -153,34 +144,21 @@ If any permission prompts appear from the Chrome extension, select "Always allow
 
 Once all fields are filled, click the "Save Details" button at the bottom of the form."""
 
-        st.text_area(
-            "Copy this prompt into Claude (with your document attached):",
-            value=chrome_prefill_prompt,
-            height=220,
-            label_visibility="visible"
-        )
+        st.markdown("""
+**This fills the form automatically — completely free.**
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("👉 [Open Claude.ai in a new tab](https://claude.ai)")
-        with col2:
-            st.markdown("👉 [Get the Chrome extension](https://chromewebstore.google.com/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh)")
-
-    st.markdown('<div class="section-title" style="margin-top:1.5rem">Good to Know</div>', unsafe_allow_html=True)
-    st.markdown("""
-- The automation prompts in **Get Quotes** only appear after you've saved your details in **Vehicle & Drivers**
-- State motoring clubs only insure vehicles garaged in their home state: RAC (WA), RACQ (QLD), RAA (SA), RACV (VIC), RACT (TAS), TIO (NT)
-- APIA and Australian Seniors are designed for over-50s
-- Shannons is an enthusiast insurer and may finish the quote over the phone
-- KOBA charges per kilometre — great for low-km drivers; its prompt reports an annual estimate for comparison
-- Quotes usually stay valid for 2–4 weeks — record the expiry date when adding them
+**Steps:**
+1. Keep this app open, and open **[claude.ai](https://claude.ai)** in another tab
+2. Start a new chat in Claude and upload your renewal notice or insurance slip (PDF or photo). 👉 [Get the Chrome extension](https://chromewebstore.google.com/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh) if you haven't already.
+3. Switch back to this tab
+4. Copy the prompt below and paste it into your Claude chat
 """)
+        st.code(chrome_prefill_prompt, language=None)
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 1 — Vehicle & Drivers
 # ════════════════════════════════════════════════════════════════════════════
 with tab1:
-    st.caption("💡 Tip: you can auto-fill this form from your renewal notice — see the 📖 Instructions tab.")
     st.markdown('<div class="section-title">Vehicle Details</div>', unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
@@ -288,7 +266,7 @@ with tab1:
             "d2_name": d2_name, "d2_dob": d2_dob, "d2_gender": d2_gender,
             "d2_licence": d2_licence, "d2_claims": d2_claims,
         }
-        st.success("✅ Details saved! Head to the **Add Quotes** tab to enter your insurer quotes.")
+        st.success("✅ Details saved! Head to the **Get Quotes** tab to start getting prices.")
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 2 — Add Quotes
@@ -301,7 +279,7 @@ with tab2:
                 "QBE", "Suncorp", "APIA", "Shannons", "Qantas", "Coles",
                 "Woolworths", "Real Insurance", "Bingle", "ROLLiN'", "Huddle",
                 "ALDI", "ING", "CommBank", "Australian Seniors",
-                "Stella", "KOBA", "TIO", "WFI", "Westpac", "St.George", "BankSA",
+                "Stella", "KOBA", "TIO", "WFI", "Elders", "Westpac", "St.George", "BankSA",
                 "Bank of Melbourne", "NAB", "ANZ", "Bendigo Bank", "BOQ", "HSBC",
                 "RAA", "RAC", "RACV", "RACQ", "RACT", "Other"]
 
@@ -313,7 +291,7 @@ with tab2:
             annual_premium = st.number_input("Annual Premium ($)", min_value=0.0, step=0.01, format="%.2f")
         with col2:
             monthly_premium = st.number_input("Monthly Premium ($) — if offered", min_value=0.0, step=0.01, format="%.2f")
-            quote_excess = st.number_input("Excess ($)", min_value=0, step=50, value=500)
+            quote_excess = st.number_input("Excess ($)", min_value=0, step=50, value=0)
             cover = st.selectbox("Cover Type", ["Comprehensive", "Third Party Fire & Theft", "Third Party Only"])
         with col3:
             sum_type = st.selectbox("Sum Insured", ["Market Value", "Agreed Value"])
@@ -375,7 +353,7 @@ with tab2:
 # ════════════════════════════════════════════════════════════════════════════
 with tab3:
     if not st.session_state.quotes:
-        st.info("💡 No quotes yet — add some in the **Add Quotes** tab first.")
+        st.info("💡 No quotes yet — add some in the **Enter Quotes** tab first.")
     else:
         quotes = st.session_state.quotes
         sorted_quotes = sorted(quotes, key=lambda x: x["annual_premium"])
@@ -1209,6 +1187,42 @@ Notes:
 - If asked about at-fault claims, select None in the last 3 years
 
 Once the final premium is shown, tell me the annual premium, excess, quote reference number, whether the online discount was applied, and what inclusions are listed."""
+            },
+            "WFI": {
+                "url": "https://www.wfi.com.au/quotes",
+                "notes": "⚠️ WFI (IAG) uses an agent/callback model — no price is shown online. The form requests a callback from your local area manager.",
+                "prompt": f"""Using the Claude in Chrome extension, please submit a car insurance quote request to WFI.
+
+Go to: https://www.wfi.com.au/quotes
+
+Fill in the callback request form using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- WFI does not show a price online — this form requests a callback from a local area manager who will discuss pricing
+- Fill in all contact and vehicle fields as accurately as possible
+- If asked for a preferred contact time, select the next available business hours slot
+
+Once the form is submitted, let me know it's done and that WFI will be in contact with a quote."""
+            },
+            "Elders": {
+                "url": "https://www.eldersinsurance.com.au/personal-insurance/car",
+                "notes": "⚠️ Underwritten by QBE. Elders uses a local agent/callback model — no price is shown online. Request triggers a callback from a local Elders agent.",
+                "prompt": f"""Using the Claude in Chrome extension, please submit a car insurance quote request to Elders Insurance.
+
+Go to: https://www.eldersinsurance.com.au/personal-insurance/car
+
+Click "Request a quote" and fill in the form using the details below. If any permission prompts appear from the Chrome extension, select "Always allow".
+
+{context}
+
+Notes:
+- Elders does not show a price online — a local Elders Insurance agent will contact you to discuss pricing
+- Elders is underwritten by QBE Insurance
+- Fill in all contact and vehicle fields as accurately as possible
+
+Once the form is submitted, let me know it's done and that an Elders agent will be in contact."""
             },
         }
 
