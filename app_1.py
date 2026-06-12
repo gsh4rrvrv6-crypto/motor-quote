@@ -77,7 +77,42 @@ AFCA_COMPLAINTS = {
     "Auto & General": "3,032 (up from 2,940)",
 }
 
-# URL + key notes per insurer (used by the master prompt)
+# Platform mapping for smart batching (same-platform insurers are grouped together)
+PLATFORMS = {
+    "AAI / Suncorp": ["GIO", "AAMI", "Suncorp", "APIA", "Bingle", "Shannons"],
+    "IAG": ["NRMA", "ROLLiN'", "WFI"],
+    "Auto & General": ["Budget Direct", "Qantas", "Coles", "ING"],
+    "Allianz": ["Allianz", "Westpac", "St.George", "NAB", "HSBC", "TIO"],
+    "Hollard": ["Woolworths", "Real Insurance", "Australian Seniors", "CommBank", "Huddle"],
+    "QBE": ["QBE", "Stella", "Elders"],
+    "CGU / IAG": ["ANZ", "Bendigo Bank"],
+    "RACQ": ["RACQ", "BOQ", "ALDI"],
+    "Other": ["KOBA", "RACV", "RAA", "RAC", "RACT"],
+}
+
+def build_context(v, d):
+    """Build the vehicle/driver context string from session state dicts."""
+    vehicle_str = f"{v.get('year','')} {v.get('make','')} {v.get('model','')} {v.get('variant','')}".strip()
+    usage_str = ", ".join(v.get("usage", [])) if v.get("usage") else "Private"
+    overnight_addr = f"{v.get('overnight_suburb','')} {v.get('overnight_postcode','')}".strip()
+    day_addr = f"{v.get('day_suburb','')} {v.get('day_postcode','')}".strip()
+    d2_block = ""
+    if d.get("d2_name"):
+        d2_block = f"\n- Additional driver: {d.get('d2_name','')}, DOB {d.get('d2_dob','')}, {d.get('d2_gender','')}, {d.get('d2_licence','Full Australian')} licence, claims: {d.get('d2_claims','None')}"
+    return f"""Vehicle: {vehicle_str}
+Registration state: {v.get('rego_state','NSW')}
+Registration number: {v.get('rego','')}
+Cover type: {v.get('cover_type','Comprehensive')}
+Sum insured: {v.get('sum_insured','Market Value')}
+Annual kilometres: {v.get('annual_kms','')}
+Overnight parking: {overnight_addr}
+Daytime parking: {day_addr}
+Usage: {usage_str}
+Financed: {v.get('finance','No')}
+Policy start date: {v.get('start_date','')}
+Basic excess: ${v.get('excess',500)}
+Previous insurer: {v.get('previous_insurer','')}
+Main driver: {d.get('d1_name','')}, DOB {d.get('d1_dob','')}, {d.get('d1_gender','')}, {d.get('d1_licence','Full Australian')} licence, claims: {d.get('d1_claims','None')}{d2_block}"""
 INSURER_INFO = {
     "GIO": ("https://www.gio.com.au/car-insurance.html", "Same platform as AAMI"),
     "AAMI": ("https://www.aami.com.au/car-insurance/get-quote.html", ""),
@@ -163,7 +198,16 @@ if "vehicle" not in st.session_state:
 if "drivers" not in st.session_state:
     st.session_state.drivers = {}
 if "selected_insurers" not in st.session_state:
-    st.session_state.selected_insurers = set()
+    st.session_state.selected_insurers = {
+        "GIO", "AAMI", "Suncorp", "APIA", "Bingle",
+        "NRMA", "ROLLiN'", "RACV", "ANZ", "Bendigo Bank",
+        "Budget Direct", "Qantas", "Coles", "ING",
+        "Allianz", "Westpac", "St.George", "NAB", "HSBC", "TIO",
+        "Woolworths", "Real Insurance", "Australian Seniors", "CommBank", "Huddle",
+        "QBE", "Stella",
+        "RACQ", "BOQ", "ALDI",
+        "KOBA", "RAA", "RAC", "RACT",
+    }
 
 # ── Cross-session quote sync (lets batch runs deliver quotes automatically) ──
 SYNC_DIR = "/tmp/mqc_sync"
@@ -280,31 +324,19 @@ with st.sidebar:
 st.markdown('<div class="main-header">🚗 Motor Quote Comparison</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Enter your vehicle and driver details, add quotes from each insurer, then compare side by side.</div>', unsafe_allow_html=True)
 
-tab_help, tab4, tab1, tab2, tab3 = st.tabs(["📖 Instructions", "🤖 Get Quotes", "📋 Vehicle & Drivers", "📝 Enter Quotes", "📊 Compare"])
+tab_help, tab1, tab4, tab2, tab3 = st.tabs(["📖 Instructions", "📋 Vehicle & Drivers", "🤖 Get Quotes", "📝 Enter Quotes", "📊 Compare"])
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 0 — Instructions
 # ════════════════════════════════════════════════════════════════════════════
 with tab_help:
-    with st.expander("📋 How This Tool Works", expanded=True):
-        st.markdown("""
-Compare car insurance quotes from **35+ Australian insurers** side by side. The workflow:
-
-1. **📋 Vehicle & Drivers** — enter your car, driver and policy details once, then hit **Save Details**. You can auto-fill this from your renewal notice (see below).
-2. **🤖 Get Quotes** — for each insurer, copy the ready-made automation prompt into a Claude chat. Claude opens that insurer's website, fills in the quote form using your saved details, and reports back the price.
-3. **📝 Enter Quotes** — Claude delivers its results into the app automatically; use this tab to review them, pull in the latest, or add quotes manually.
-4. **📊 Compare** — see every quote side by side with the best value highlighted, and download the comparison as a CSV.
-""")
-
     st.markdown('<div class="section-title" style="margin-top:1.5rem">What You Need</div>', unsafe_allow_html=True)
     st.markdown("""
 - A **Claude account** — sign up free at [claude.ai](https://claude.ai)
 - The **[Claude in Chrome extension](https://chromewebstore.google.com/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh)** — this is what lets Claude fill in forms in your browser
-
-You can also skip the automation entirely: visit each insurer's website yourself, get quotes manually, and just use the **Enter Quotes** and **Compare** tabs.
 """)
 
-    st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Auto-Fill Your Details from a Document</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Step by Step</div>', unsafe_allow_html=True)
 
     with st.expander("✨ Auto-fill from your renewal notice or insurance slip", expanded=False):
 
@@ -334,21 +366,22 @@ If any permission prompts appear from the Chrome extension, select "Always allow
 
 Once all fields are filled, click the "Save Details" button at the bottom of the form."""
 
-        st.markdown("""1. Open **[claude.ai](https://claude.ai)** in another tab · 2. Upload your document · 3. Copy & paste the prompt below · 4. Claude fills in the form for you""")
+        st.markdown("""1. Open **[claude.ai](https://claude.ai)** in another tab · 2. Upload your document — including both the renewal notice and certificate of insurance will lead to faster results · 3. Copy & paste the prompt below · 4. Run the prompt · 5. Approve any Chrome extension permission prompts · 6. Claude fills in the form for you — this will take 5–25 minutes depending on how many brands were selected below""")
         st.text_area("Prompt to copy:", value=chrome_prefill_prompt, height=100, label_visibility="collapsed")
 
     # ── Insurer selection grid ────────────────────────────────────────────────
     st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
-    st.caption("Pick which insurers you want quotes from. Your selections carry over to the **Get Quotes** tab.")
+    st.caption("Pick which insurers you want quotes from.")
 
     insurer_select_groups = {
-        "Major Direct": ["GIO", "AAMI", "NRMA", "Budget Direct", "Allianz", "QBE", "Suncorp"],
-        "Budget & Online": ["Bingle", "ROLLiN'", "Huddle", "ALDI", "KOBA", "Stella"],
-        "Retail & Points": ["Qantas", "Coles", "Woolworths", "Real Insurance", "ING"],
-        "Banks": ["CommBank", "Westpac", "St.George", "NAB", "ANZ", "Bendigo Bank", "BOQ", "HSBC"],
-        "Seniors": ["APIA", "Australian Seniors"],
-        "State Clubs": ["RAA", "RAC", "RACV", "RACQ", "RACT", "TIO"],
-        "Agent / Callback": ["Shannons", "WFI", "Elders"],
+        "Suncorp Group (AAI Limited)": ["GIO", "AAMI", "Suncorp", "APIA", "Bingle"],
+        "IAG": ["NRMA", "ROLLiN'", "RACV", "ANZ", "Bendigo Bank"],
+        "Auto & General": ["Budget Direct", "Qantas", "Coles", "ING"],
+        "Allianz": ["Allianz", "Westpac", "St.George", "NAB", "HSBC", "TIO"],
+        "Hollard": ["Woolworths", "Real Insurance", "Australian Seniors", "CommBank", "Huddle"],
+        "QBE": ["QBE", "Stella"],
+        "RACQ Insurance": ["RACQ", "BOQ", "ALDI"],
+        "Independent": ["KOBA", "RAA", "RAC", "RACT"],
     }
 
     for group_name, group_insurers in insurer_select_groups.items():
@@ -370,6 +403,8 @@ Once all fields are filled, click the "Save Details" button at the bottom of the
                     st.markdown(f'<div class="brand-card" style="background:#f0f0f0;color:#999;border-color:#ddd">{ins}</div>', unsafe_allow_html=True)
                 if uw:
                     st.markdown(f'<div class="brand-label">{uw}</div>', unsafe_allow_html=True)
+
+    st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
 
     n_selected = len(st.session_state.selected_insurers)
     if n_selected > 0:
@@ -408,6 +443,7 @@ PHASE 2 — FILL IN THE APP
 PHASE 3 — GET QUOTES ({m_i} insurers, one at a time, in this order)
 Rules for every insurer:
 - If any Chrome extension permission prompts appear, select "Always allow this action"
+- If any "I understand", "I agree", "Accept", "OK" or cookie/disclaimer popups appear, click them immediately and continue
 - Address fields: type the full address with suburb, state and postcode and select from the dropdown
 - Always select Market Value (not Agreed Value)
 - Modifications: None. At-fault claims in the last 3 years: None
@@ -435,6 +471,117 @@ Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amou
             label_visibility="visible"
         )
         st.caption(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
+
+        # ── Step 6: Batch prompts (available after vehicle data is saved) ─────
+        v_inst = st.session_state.vehicle
+        d_inst = st.session_state.drivers
+        if v_inst:
+            context_inst = build_context(v_inst, d_inst)
+            selected_set = st.session_state.selected_insurers
+
+            ordered_selected = []
+            for platform, members in PLATFORMS.items():
+                for m in members:
+                    if m in selected_set and m not in ordered_selected:
+                        ordered_selected.append(m)
+            for s in selected_set:
+                if s not in ordered_selected:
+                    ordered_selected.append(s)
+
+            app_url_inst = _detect_app_url()
+            batch_size = 3
+            batches = [ordered_selected[i:i+batch_size] for i in range(0, len(ordered_selected), batch_size)]
+
+            if batches:
+                parallel = len(batches) > 1
+                st.markdown("---")
+                st.markdown(f'<div class="section-title">Your Prompts — {len(ordered_selected)} insurers in {len(batches)} batch{"es" if len(batches) > 1 else ""}</div>', unsafe_allow_html=True)
+                if parallel:
+                    st.info(f"""⚡ **Run your {len(batches)} batches at the same time** — total run time ≈ one batch (15–25 mins) instead of {len(batches)}× that:
+1. Open {len(batches)} separate Chrome **windows** (Cmd+N on Mac / Ctrl+N on Windows) — windows, not tabs
+2. Go to claude.ai in each window and start a new chat
+3. Paste a different batch prompt into each and send — they all run simultaneously
+4. Each batch finishes by opening this app and adding its results itself — zero copying needed
+5. Quotes flow in automatically — click **🔄 Refresh** in the Enter Quotes tab to pull in the latest""")
+                else:
+                    st.caption("When the batch finishes, Claude opens this app and adds the results automatically — click 🔄 Refresh in the Enter Quotes tab to pull them in.")
+
+                for batch_idx, batch in enumerate(batches):
+                    batch_label = f"Batch {batch_idx + 1}" if len(batches) > 1 else "All selected insurers"
+                    batch_names = ", ".join(batch)
+
+                    insurer_blocks = []
+                    for i, ins_name in enumerate(batch, 1):
+                        ins_url, ins_note = INSURER_INFO.get(ins_name, ("", ""))
+                        if not ins_url:
+                            continue
+                        notes_lines = f"\n   ⚠️ {ins_note}" if ins_note else ""
+                        insurer_blocks.append(
+                            f"───────────────────────────────\n"
+                            f"INSURER {i} of {len(batch)}: {ins_name}\n"
+                            f"   Step A: Go to {ins_url}\n"
+                            f"   Step B: Click Get a quote (or Request a quote)\n"
+                            f"   Step C: Fill in ALL fields using the vehicle & driver details above\n"
+                            f"   Step D: Complete the quote and note the result{notes_lines}\n"
+                            f"   Step E: STOP and confirm — tell me: ✅ insurer name, annual premium, excess, quote ref, key inclusions\n"
+                            f"           OR ❌ insurer name + reason it failed (e.g. CAPTCHA, eligibility, callback only)\n"
+                            f"   Step F: Wait for my confirmation before moving to the next insurer"
+                        )
+
+                    insurer_instructions = "\n\n".join(insurer_blocks)
+
+                    sync_url = f"{app_url_inst}/?sync={st.session_state.sync_code}" if app_url_inst else ""
+                    open_step = (f"2. Open this exact link in a new browser tab: {sync_url}"
+                                 if sync_url else
+                                 "2. Switch to the Motor Quote Comparison app tab in this browser (open it if needed)")
+                    finish_block = f"""AFTER ALL {len(batch)} INSURERS ARE DONE — deliver the results into the app yourself:
+1. Compile every result, one line per insurer, in EXACTLY this format:
+Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amount> | Ref: <quote reference> | Inclusions: <roadside / hire car / windscreen / NCD / online discount> | Notes: <anything important>
+   For failed or callback-only insurers use: Insurer: <name> | Annual: n/a | Notes: <reason — e.g. CAPTCHA, not eligible, callback requested>
+{open_step}
+3. Go to the "Enter Quotes" tab
+4. Paste ALL the result lines into the "⚡ Quick Add — Paste Results from Claude" box
+5. Click "Parse & Add Quotes" and confirm what was added
+6. Finally, also report the result lines back to me in chat as a backup"""
+
+                    batch_prompt = f"""Using the Claude in Chrome extension, please get car insurance quotes from {len(batch)} insurers. Work through them ONE AT A TIME in the order below.
+
+VEHICLE & DRIVER DETAILS (use for every insurer):
+{context_inst}
+
+RULES FOR EVERY INSURER:
+- If any Chrome extension permission prompts appear, select "Always allow this action"
+- If any "I understand", "I agree", "Accept", "OK" or cookie/disclaimer popups appear, click them immediately and continue
+- For address fields, type the full address with suburb, state and postcode e.g. "75 Bridge St, Lane Cove NSW 2066" and select from the dropdown
+- Always select Market Value (not Agreed Value)
+- If asked about modifications, select None
+- If asked about at-fault claims, select None in the last 3 years
+- If the site asks you to log in, look for a "Continue without logging in" or guest option — do NOT log in
+
+IF SOMETHING GOES WRONG:
+- CAPTCHA appears → tell me which insurer hit a CAPTCHA, skip it, move to the next
+- Site won't load or errors out → wait 5 seconds, try once more, then skip and note it
+- Location/eligibility blocked → note the reason, skip, move on
+- Callback model (no price shown) → submit the callback form, note "callback requested", move on
+- Form is confusing or stuck → describe what you see, skip, move on
+
+IMPORTANT: After EACH insurer, stop and tell me the result before proceeding. Do not rush ahead.
+
+INSURERS TO QUOTE (in order):
+
+{insurer_instructions}
+
+───────────────────────────────
+{finish_block}"""
+
+                    with st.expander(f"**{batch_label}** — {batch_names}", expanded=(batch_idx == 0)):
+                        st.text_area(
+                            "Copy into a new Claude chat with Chrome extension active:",
+                            value=batch_prompt,
+                            height=150,
+                            key=f"batch_prompt_{batch_idx}",
+                            label_visibility="visible"
+                        )
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 1 — Vehicle & Drivers
@@ -547,7 +694,11 @@ with tab1:
             "d2_name": d2_name, "d2_dob": d2_dob, "d2_gender": d2_gender,
             "d2_licence": d2_licence, "d2_claims": d2_claims,
         }
-        st.success("✅ Details saved! Head to the **Get Quotes** tab to start getting prices.")
+        st.success("✅ Details saved! Switching to Get Quotes...")
+        st.markdown("""<script>
+            const tabs = window.parent.document.querySelectorAll('button[data-baseweb="tab"]');
+            if (tabs.length >= 3) tabs[2].click();
+        </script>""", unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 2 — Add Quotes
@@ -902,42 +1053,14 @@ Figures shown are complaints received in FY2024-25 at underwriter group level. F
 # TAB 4 — Get Quotes (automation prompts)
 # ════════════════════════════════════════════════════════════════════════════
 with tab4:
-    st.markdown('<div class="section-title">Get Quotes Automatically</div>', unsafe_allow_html=True)
-
     v = st.session_state.vehicle
     d = st.session_state.drivers
 
     if not v:
         st.warning("⚠️ Please fill in your Vehicle & Driver details first in the **Vehicle & Drivers** tab, then come back here.")
     else:
-        st.caption("Copy a prompt below into a new Claude chat (with the Chrome extension active) — Claude fills out that insurer's quote form automatically and reports back the price. Full setup steps are in the 📖 Instructions tab.")
 
-        st.markdown("---")
-
-        # Build the shared vehicle/driver context block
-        vehicle_str = f"{v.get('year','')} {v.get('make','')} {v.get('model','')} {v.get('variant','')}".strip()
-        usage_str = ", ".join(v.get("usage", [])) if v.get("usage") else "Private"
-        overnight_addr = f"{v.get('overnight_suburb','')} {v.get('overnight_postcode','')}".strip()
-        day_addr = f"{v.get('day_suburb','')} {v.get('day_postcode','')}".strip()
-        d2_block = ""
-        if d.get("d2_name"):
-            d2_block = f"""
-- Additional driver: {d.get('d2_name','')}, DOB {d.get('d2_dob','')}, {d.get('d2_gender','')}, {d.get('d2_licence','Full Australian')} licence, claims: {d.get('d2_claims','None')}"""
-
-        context = f"""Vehicle: {vehicle_str}
-Registration state: {v.get('rego_state','NSW')}
-Registration number: {v.get('rego','')}
-Cover type: {v.get('cover_type','Comprehensive')}
-Sum insured: {v.get('sum_insured','Market Value')}
-Annual kilometres: {v.get('annual_kms','')}
-Overnight parking: {overnight_addr}
-Daytime parking: {day_addr}
-Usage: {usage_str}
-Financed: {v.get('finance','No')}
-Policy start date: {v.get('start_date','')}
-Basic excess: ${v.get('excess',500)}
-Previous insurer: {v.get('previous_insurer','')}
-Main driver: {d.get('d1_name','')}, DOB {d.get('d1_dob','')}, {d.get('d1_gender','')}, {d.get('d1_licence','Full Australian')} licence, claims: {d.get('d1_claims','None')}{d2_block}"""
+        context = build_context(v, d)
 
         # Define per-insurer prompts
         insurers_prompts = {
@@ -1646,146 +1769,5 @@ Once the form is submitted, let me know it's done and that an Elders agent will 
             },
         }
 
-        # ── Batch mode ────────────────────────────────────────────────────────
-        # Platform mapping for smart batching
-        PLATFORMS = {
-            "AAI / Suncorp": ["GIO", "AAMI", "Suncorp", "APIA", "Bingle", "Shannons"],
-            "IAG": ["NRMA", "ROLLiN'", "WFI"],
-            "Auto & General": ["Budget Direct", "Qantas", "Coles", "ING"],
-            "Allianz": ["Allianz", "Westpac", "St.George", "NAB", "HSBC", "TIO"],
-            "Hollard": ["Woolworths", "Real Insurance", "Australian Seniors", "CommBank", "Huddle"],
-            "QBE": ["QBE", "Stella", "Elders"],
-            "CGU / IAG": ["ANZ", "Bendigo Bank"],
-            "RACQ": ["RACQ", "BOQ", "ALDI"],
-            "Other": ["KOBA", "RACV", "RAA", "RAC", "RACT"],
-        }
-
-        selected_set = st.session_state.selected_insurers
-
-        if not selected_set:
-            st.info("💡 No insurers selected yet — go to the **📖 Instructions** tab and pick which insurers you want quotes from.")
-        else:
-            # Sort selected insurers by platform so same-platform insurers are batched together
-            ordered_selected = []
-            for platform, members in PLATFORMS.items():
-                for m in members:
-                    if m in selected_set and m not in ordered_selected:
-                        ordered_selected.append(m)
-            for s in selected_set:
-                if s not in ordered_selected:
-                    ordered_selected.append(s)
-
-            app_url = _detect_app_url()
-
-            # Split into batches of 3
-            batch_size = 3
-            batches = [ordered_selected[i:i+batch_size] for i in range(0, len(ordered_selected), batch_size)]
-
-            parallel = len(batches) > 1
-
-            st.markdown("---")
-            st.markdown(f'<div class="section-title">Your Prompts — {len(ordered_selected)} insurers in {len(batches)} batch{"es" if len(batches) > 1 else ""}</div>', unsafe_allow_html=True)
-            if parallel:
-                st.info(f"""⚡ **Run your {len(batches)} batches at the same time** — total run time ≈ one batch (15–25 mins) instead of {len(batches)}× that:
-1. Open {len(batches)} separate Chrome **windows** (Cmd+N on Mac / Ctrl+N on Windows) — windows, not tabs
-2. Go to claude.ai in each window and start a new chat
-3. Paste a different batch prompt into each and send — they all run simultaneously
-4. Each batch finishes by opening this app and adding its results itself — zero copying needed
-5. Quotes flow in automatically — click **🔄 Refresh** in the Enter Quotes tab to pull in the latest""")
-            else:
-                st.caption("When the batch finishes, Claude opens this app and adds the results automatically — click 🔄 Refresh in the Enter Quotes tab to pull them in.")
-
-            for batch_idx, batch in enumerate(batches):
-                batch_label = f"Batch {batch_idx + 1}" if len(batches) > 1 else "All selected insurers"
-                batch_names = ", ".join(batch)
-
-                # Build per-insurer instruction blocks with step-by-step structure
-                insurer_blocks = []
-                for i, ins_name in enumerate(batch, 1):
-                    info = insurers_prompts.get(ins_name)
-                    if not info:
-                        continue
-                    notes_lines = ""
-                    if info.get("notes"):
-                        notes_lines = f"\n   ⚠️ {info['notes']}"
-                    insurer_blocks.append(
-                        f"───────────────────────────────\n"
-                        f"INSURER {i} of {len(batch)}: {ins_name}\n"
-                        f"   Step A: Go to {info['url']}\n"
-                        f"   Step B: Click Get a quote (or Request a quote)\n"
-                        f"   Step C: Fill in ALL fields using the vehicle & driver details above\n"
-                        f"   Step D: Complete the quote and note the result{notes_lines}\n"
-                        f"   Step E: STOP and confirm — tell me: ✅ insurer name, annual premium, excess, quote ref, key inclusions\n"
-                        f"           OR ❌ insurer name + reason it failed (e.g. CAPTCHA, eligibility, callback only)\n"
-                        f"   Step F: Wait for my confirmation before moving to the next insurer"
-                    )
-
-                insurer_instructions = "\n\n".join(insurer_blocks)
-
-                sync_url = f"{app_url}/?sync={st.session_state.sync_code}" if app_url else ""
-                open_step = (f"2. Open this exact link in a new browser tab: {sync_url}"
-                             if sync_url else
-                             "2. Switch to the Motor Quote Comparison app tab in this browser (open it if needed)")
-                finish_block = f"""AFTER ALL {len(batch)} INSURERS ARE DONE — deliver the results into the app yourself:
-1. Compile every result, one line per insurer, in EXACTLY this format:
-Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amount> | Ref: <quote reference> | Inclusions: <roadside / hire car / windscreen / NCD / online discount> | Notes: <anything important>
-   For failed or callback-only insurers use: Insurer: <name> | Annual: n/a | Notes: <reason — e.g. CAPTCHA, not eligible, callback requested>
-{open_step}
-3. Go to the "Enter Quotes" tab
-4. Paste ALL the result lines into the "⚡ Quick Add — Paste Results from Claude" box
-5. Click "Parse & Add Quotes" and confirm what was added
-6. Finally, also report the result lines back to me in chat as a backup"""
-
-                batch_prompt = f"""Using the Claude in Chrome extension, please get car insurance quotes from {len(batch)} insurers. Work through them ONE AT A TIME in the order below.
-
-VEHICLE & DRIVER DETAILS (use for every insurer):
-{context}
-
-RULES FOR EVERY INSURER:
-- If any Chrome extension permission prompts appear, select "Always allow this action"
-- For address fields, type the full address with suburb, state and postcode e.g. "75 Bridge St, Lane Cove NSW 2066" and select from the dropdown
-- Always select Market Value (not Agreed Value)
-- If asked about modifications, select None
-- If asked about at-fault claims, select None in the last 3 years
-- If the site asks you to log in, look for a "Continue without logging in" or guest option — do NOT log in
-
-IF SOMETHING GOES WRONG:
-- CAPTCHA appears → tell me which insurer hit a CAPTCHA, skip it, move to the next
-- Site won't load or errors out → wait 5 seconds, try once more, then skip and note it
-- Location/eligibility blocked → note the reason, skip, move on
-- Callback model (no price shown) → submit the callback form, note "callback requested", move on
-- Form is confusing or stuck → describe what you see, skip, move on
-
-IMPORTANT: After EACH insurer, stop and tell me the result before proceeding. Do not rush ahead.
-
-INSURERS TO QUOTE (in order):
-
-{insurer_instructions}
-
-───────────────────────────────
-{finish_block}"""
-
-                with st.expander(f"**{batch_label}** — {batch_names}", expanded=(batch_idx == 0)):
-                    st.text_area(
-                        "Copy into a new Claude chat with Chrome extension active:",
-                        value=batch_prompt,
-                        height=150,
-                        key=f"batch_prompt_{batch_idx}",
-                        label_visibility="visible"
-                    )
-
-        # ── Individual prompts (collapsed) ────────────────────────────────────
-        st.markdown("---")
-        with st.expander("💡 Or get quotes one insurer at a time", expanded=False):
-            for insurer_name, info in insurers_prompts.items():
-                with st.expander(f"**{insurer_name}**  —  {info['url']}", expanded=False):
-                    if info["notes"]:
-                        st.caption(f"ℹ️ {info['notes']}")
-                    st.text_area(
-                        "Automation prompt:",
-                        value=info["prompt"],
-                        height=150,
-                        key=f"prompt_{insurer_name}",
-                        label_visibility="visible"
-                    )
+        st.info("💡 Your batch prompts are on the **📖 Instructions** tab — head there to copy and run them.")
 
