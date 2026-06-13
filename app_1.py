@@ -271,10 +271,10 @@ if "drivers" not in st.session_state:
 if "selected_insurers" not in st.session_state:
     st.session_state.selected_insurers = {
         "GIO", "AAMI",
-        "NRMA", "ANZ",
-        "Budget Direct", "Qantas",
+        "NRMA",
+        "Budget Direct",
         "Allianz",
-        "Woolworths", "Real Insurance", "CBA",
+        "Real Insurance",
         "QBE",
     }
 
@@ -500,11 +500,10 @@ Once all fields are filled, click the "Save Details" button at the bottom of the
         ("Auto & General", ["Budget Direct", "Qantas", "Coles", "ING", "Australia Post", "Kogan"]),
         ("Allianz", ["Allianz", "Westpac", "St.George", "BankSA", "NAB", "HSBC", "TIO",
                      "Beyond Bank", "BMW", "Mercedes-Benz", "RAA"]),
-        ("Hollard", ["Woolworths", "Real Insurance", "Australian Seniors", "CBA", "Huddle",
+        ("Hollard", ["Real Insurance", "Woolworths", "Australian Seniors", "CBA", "Huddle",
                      "Ozicare", "TrueCover", "Everyday", "Over Fifty", "National Seniors"]),
         ("QBE", ["QBE", "Stella"]),
-        ("RACQ Insurance", ["ALDI"]),
-        ("Other", ["Bupa", "Australian Unity", "ahm", "pd.com.au", "UbiCar", "Carpeesh",
+        ("Other", ["ALDI", "Bupa", "Australian Unity", "ahm", "pd.com.au", "UbiCar", "Carpeesh",
                    "Blue Badge", "Ryno", "Hume", "Club 4x4", "RAC", "RACT", "KOBA"]),
     ]
 
@@ -716,7 +715,7 @@ INSURERS TO QUOTE (in order):
                         else:
                             st.markdown(f'<div class="brand-card brand-off" style="font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
                     else:
-                        st.empty()
+                        pass
 
     st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
 
