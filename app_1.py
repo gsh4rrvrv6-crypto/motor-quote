@@ -216,13 +216,21 @@ st.markdown("""
     .brand-on { color:#fff; }
     .brand-label { font-size:0.65rem; color:#888; font-weight:400; margin-top:2px; }
     /* Make checkbox fill entire card area — whole tile is the button */
-    [data-testid="stCheckbox"] { margin-bottom:-48px; position:relative; z-index:10; opacity:0; min-height:40px; }
-    [data-testid="stCheckbox"] label { cursor:pointer; min-height:40px; width:100%; display:block; }
+    [data-testid="stCheckbox"] { margin-bottom:-48px; position:relative; z-index:10; opacity:0; height:40px !important; min-height:40px !important; max-height:40px !important; overflow:hidden; }
+    [data-testid="stCheckbox"] label { cursor:pointer; height:40px !important; width:100%; display:block; }
     [data-testid="stCheckbox"] label span { font-size:0 !important; line-height:0 !important; }
     [data-testid="stCheckbox"] label svg { display:none !important; }
     [data-testid="stCheckbox"] label > div:first-child { display:none !important; }
+    /* Force every column element to uniform size */
+    [data-testid="stColumn"] > div { padding-top:0 !important; }
+    [data-testid="stColumn"] [data-testid="stCheckbox"] + div { margin-top:0 !important; padding-top:0 !important; }
+    [data-testid="stVerticalBlockBorderWrapper"] { padding:0 !important; }
+    [data-testid="stColumn"] [data-testid="element-container"] { margin:0 !important; padding:0 !important; }
     /* Group title spacing — closer to tiles below */
-    .group-label { font-size:0.72rem; color:#999; margin-top:14px; margin-bottom:-4px; padding:0; line-height:1; }
+    .group-label { font-size:2.16rem; color:#999; margin-top:14px; margin-bottom:-4px; padding:0; line-height:1; font-weight:700; }
+    /* Force all columns to align content to top */
+    [data-testid="stHorizontalBlock"] { align-items:flex-start !important; }
+    [data-testid="stColumn"] { vertical-align:top !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -351,7 +359,9 @@ st.markdown("""
     /* Hide file uploader helper text and grey box */
     [data-testid="stFileUploader"] section > div:last-child { display:none !important; }
     [data-testid="stFileUploader"] small { display:none !important; }
-    [data-testid="stFileUploader"] section { border:none !important; padding:0 !important; }
+    [data-testid="stFileUploader"] section { border:none !important; padding:0 !important; background:none !important; }
+    [data-testid="stFileUploader"] section > div { background:none !important; border:none !important; }
+    [data-testid="stFileUploader"] { background:none !important; }
     [data-testid="stFileUploader"] section > button {
         background:#f8f9fa !important; color:#333 !important; border:1px solid #ddd !important;
         border-radius:8px !important; font-weight:600 !important; font-size:0.85rem !important;
@@ -364,9 +374,23 @@ st.markdown("""
     .session-bar button, .session-bar [data-testid="stDownloadButton"] button {
         background:#f8f9fa !important; color:#333 !important; border:1px solid #ddd !important;
         border-radius:8px !important; font-weight:600 !important; font-size:0.85rem !important;
-        padding:0.4rem 1rem !important;
+        padding:0.4rem 1rem !important; height:42px !important; min-width:120px !important;
     }
     .session-bar button:hover, .session-bar [data-testid="stDownloadButton"] button:hover {
+        background:#e9ecef !important; border-color:#ccc !important;
+    }
+    /* Uniform save/upload/restore button sizing */
+    [data-testid="stDownloadButton"] button,
+    [data-testid="stFileUploader"] section > button,
+    [data-testid="stBaseButton-secondary"] {
+        height:42px !important; min-width:120px !important; width:100% !important;
+        padding:0.4rem 1rem !important; font-size:0.85rem !important;
+        background:#f8f9fa !important; color:#333 !important;
+        border:1px solid #ddd !important; border-radius:8px !important; font-weight:600 !important;
+    }
+    [data-testid="stDownloadButton"] button:hover,
+    [data-testid="stFileUploader"] section > button:hover,
+    [data-testid="stBaseButton-secondary"]:hover {
         background:#e9ecef !important; border-color:#ccc !important;
     }
 </style>
@@ -379,7 +403,7 @@ session_data = {
     "quotes": st.session_state.quotes,
     "selected_insurers": sorted(st.session_state.selected_insurers),
 }
-col_save, col_restore_file, col_restore_btn = st.columns([1, 2, 1])
+col_save, col_restore_file, col_restore_btn = st.columns([1, 1, 1])
 with col_save:
     st.download_button(
         "💾 Save",
@@ -411,7 +435,6 @@ with col_restore_btn:
 
 # ── Header ────────────────────────────────────────────────────────────────────
 st.markdown('<div class="main-header">🚗 Motor Quote Comparison</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Enter your vehicle and driver details, add quotes from each insurer, then compare side by side.</div>', unsafe_allow_html=True)
 
 tab_help, tab1, tab2, tab3 = st.tabs(["📖 Instructions", "📋 Vehicle & Drivers", "📝 Enter Quotes", "📊 Compare"])
 
@@ -454,18 +477,18 @@ If any permission prompts appear from the Chrome extension, select "Always allow
 
 Once all fields are filled, click the "Save Details" button at the bottom of the form."""
 
-    st.markdown("**1.** Select brands you want to quote")
+    st.markdown("**1.** Select brands you want to quote — lower down on this page")
+    n_selected = len(st.session_state.selected_insurers)
+    if n_selected > 0:
+        st.success(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected")
     st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in another tab")
     st.markdown("**3.** Click the Claude icon at the top right of the window but do NOT press run")
     st.markdown("**4.** Upload your renewal notice and certificate of insurance — including both will lead to faster results")
     st.markdown("**5.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/)")
-    col_s6, col_s6b = st.columns([4, 1])
-    with col_s6:
-        st.markdown("**6.** Copy the prefill prompt into your Claude chat")
-    with col_s6b:
-        st.download_button("⬇️ Prefill prompt", data=chrome_prefill_prompt,
-                           file_name="prefill_prompt.txt", mime="text/plain", width="stretch")
-    st.markdown("**7.** Run the prompt")
+    import base64 as _b64
+    _prompt_b64 = _b64.b64encode(chrome_prefill_prompt.encode()).decode()
+    st.markdown(f'**6.** Copy the <a href="data:text/plain;base64,{_prompt_b64}" download="prefill_prompt.txt">prefill prompt</a> into your Claude chat', unsafe_allow_html=True)
+    st.markdown("**7.** Run the prompt by pressing the orange arrow in the panel on the bottom right")
     st.markdown("**8.** Approve any Chrome extension permission prompts")
     st.markdown("**9.** Claude fills in the form for you")
 
@@ -519,12 +542,9 @@ Once all fields are filled, click the "Save Details" button at the bottom of the
 
     st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
 
-    n_selected = len(st.session_state.selected_insurers)
     if n_selected > 0:
-        st.success(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected")
 
-        # ── Master prompt: fully automated run ───────────────────────────────
-        st.markdown('<div class="section-title" style="margin-top:1.5rem">🚀 Fully Automated Run</div>', unsafe_allow_html=True)
+        st.markdown("**10.** Download the master prompt and paste into your Claude chat")
         st.caption("The lowest-touch option: drag your renewal notice into a new Claude chat, paste this prompt, walk away.")
 
         master_app_url = _detect_app_url()
