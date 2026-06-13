@@ -209,16 +209,17 @@ st.markdown("""
     .date-hint { font-size:0.75rem; color:#999; margin-top:-12px; margin-bottom:8px; }
     .brand-card {
         border-radius:8px; padding:10px 6px; text-align:center; font-weight:700;
-        margin-top:-10px; margin-bottom:6px; min-height:38px;
-        display:flex; align-items:center; justify-content:center;
-        cursor:pointer; transition:all 0.15s;
+        min-height:38px; display:flex; align-items:center; justify-content:center;
     }
     .brand-off { background:#f0f0f0; color:#333; }
     .brand-on { color:#fff; }
     .brand-label { font-size:0.65rem; color:#888; font-weight:400; margin-top:2px; }
-    /* Hide checkbox labels — the card IS the visual */
-    [data-testid="stCheckbox"] label span { font-size:0 !important; }
-    [data-testid="stCheckbox"] { margin-bottom:-14px; }
+    /* Hide checkbox completely — card is the visual, checkbox catches clicks */
+    [data-testid="stCheckbox"] label { cursor:pointer; min-height:38px; }
+    [data-testid="stCheckbox"] label span { font-size:0 !important; line-height:0 !important; }
+    [data-testid="stCheckbox"] label svg { display:none !important; }
+    [data-testid="stCheckbox"] label > div:first-child { display:none !important; }
+    [data-testid="stCheckbox"] { margin-bottom:-42px; position:relative; z-index:10; opacity:0; }
 </style>
 """, unsafe_allow_html=True)
 
