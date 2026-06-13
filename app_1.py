@@ -227,7 +227,7 @@ st.markdown("""
     [data-testid="stVerticalBlockBorderWrapper"] { padding:0 !important; }
     [data-testid="stColumn"] [data-testid="element-container"] { margin:0 !important; padding:0 !important; }
     /* Group title spacing — closer to tiles below */
-    .group-label { font-size:2.16rem; color:#999; margin-top:14px; margin-bottom:-4px; padding:0; line-height:1; font-weight:700; }
+    .group-label { font-size:1.44rem; color:#999; margin-top:14px; margin-bottom:-4px; padding:0; line-height:1; font-weight:700; }
     /* Force all columns to align content to top */
     [data-testid="stHorizontalBlock"] { align-items:flex-start !important; }
     [data-testid="stColumn"] { vertical-align:top !important; }
@@ -362,6 +362,8 @@ st.markdown("""
     [data-testid="stFileUploader"] section { border:none !important; padding:0 !important; background:none !important; }
     [data-testid="stFileUploader"] section > div { background:none !important; border:none !important; }
     [data-testid="stFileUploader"] { background:none !important; }
+    [data-testid="stFileUploader"] section > button span { font-size:0 !important; line-height:0 !important; }
+    [data-testid="stFileUploader"] section > button::before { content:"📂 Upload previous session"; font-size:0.85rem; font-weight:600; }
     [data-testid="stFileUploader"] section > button {
         background:#f8f9fa !important; color:#333 !important; border:1px solid #ddd !important;
         border-radius:8px !important; font-weight:600 !important; font-size:0.85rem !important;
@@ -481,8 +483,8 @@ Once all fields are filled, click the "Save Details" button at the bottom of the
     n_selected = len(st.session_state.selected_insurers)
     if n_selected > 0:
         st.success(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected")
-    st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in another tab")
-    st.markdown("**3.** Click the Claude icon at the top right of the window but do NOT press run")
+    st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in a new window")
+    st.markdown("**3.** Click the claude icon at the top right of the window but do NOT press run")
     st.markdown("**4.** Upload your renewal notice and certificate of insurance — including both will lead to faster results")
     st.markdown("**5.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/)")
     import base64 as _b64
@@ -491,9 +493,6 @@ Once all fields are filled, click the "Save Details" button at the bottom of the
     st.markdown("**7.** Run the prompt by pressing the orange arrow in the panel on the bottom right")
     st.markdown("**8.** Approve any Chrome extension permission prompts")
     st.markdown("**9.** Claude fills in the form for you")
-
-    # ── Insurer selection grid (grouped by underwriter, row-aligned) ──────────
-    st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
 
     insurer_groups_ordered = [
         ("Suncorp Group", ["GIO", "AAMI", "Suncorp", "APIA", "Bingle"]),
@@ -512,35 +511,6 @@ Once all fields are filled, click the "Save Details" button at the bottom of the
     all_selectable_insurers = []
     for _, members in insurer_groups_ordered:
         all_selectable_insurers.extend(members)
-
-    n_cols = 7
-    for group_name, group_insurers in insurer_groups_ordered:
-        st.markdown(f'<div class="group-label">{group_name}</div>', unsafe_allow_html=True)
-        for row_start in range(0, len(group_insurers), n_cols):
-            row_slice = group_insurers[row_start:row_start + n_cols]
-            cols = st.columns(n_cols)
-            for col_idx in range(n_cols):
-                with cols[col_idx]:
-                    if col_idx < len(row_slice):
-                        ins = row_slice[col_idx]
-                        bg, _ = BRAND_COLORS.get(ins.upper(), ("#666", "#fff"))
-                        is_selected = st.checkbox(
-                            ins, key=f"sel_{ins}",
-                            value=ins in st.session_state.selected_insurers
-                        )
-                        if is_selected:
-                            st.session_state.selected_insurers.add(ins)
-                        else:
-                            st.session_state.selected_insurers.discard(ins)
-                        fsize = "0.68rem" if len(ins) > 14 else ("0.72rem" if len(ins) > 10 else ("0.78rem" if len(ins) > 7 else "0.85rem"))
-                        if is_selected:
-                            st.markdown(f'<div class="brand-card brand-on" style="background:{bg};font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
-                        else:
-                            st.markdown(f'<div class="brand-card brand-off" style="font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
-                    else:
-                        st.empty()
-
-    st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
 
     if n_selected > 0:
 
@@ -717,6 +687,39 @@ INSURERS TO QUOTE (in order):
                         )
 
 # ════════════════════════════════════════════════════════════════════════════
+
+    # ── Insurer selection grid (grouped by underwriter, row-aligned) ──────────
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
+
+    n_cols = 7
+    for group_name, group_insurers in insurer_groups_ordered:
+        st.markdown(f'<div class="group-label">{group_name}</div>', unsafe_allow_html=True)
+        for row_start in range(0, len(group_insurers), n_cols):
+            row_slice = group_insurers[row_start:row_start + n_cols]
+            cols = st.columns(n_cols)
+            for col_idx in range(n_cols):
+                with cols[col_idx]:
+                    if col_idx < len(row_slice):
+                        ins = row_slice[col_idx]
+                        bg, _ = BRAND_COLORS.get(ins.upper(), ("#666", "#fff"))
+                        is_selected = st.checkbox(
+                            ins, key=f"sel_{ins}",
+                            value=ins in st.session_state.selected_insurers
+                        )
+                        if is_selected:
+                            st.session_state.selected_insurers.add(ins)
+                        else:
+                            st.session_state.selected_insurers.discard(ins)
+                        fsize = "0.68rem" if len(ins) > 14 else ("0.72rem" if len(ins) > 10 else ("0.78rem" if len(ins) > 7 else "0.85rem"))
+                        if is_selected:
+                            st.markdown(f'<div class="brand-card brand-on" style="background:{bg};font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
+                        else:
+                            st.markdown(f'<div class="brand-card brand-off" style="font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
+                    else:
+                        st.empty()
+
+    st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
+
 # TAB 1 — Vehicle & Drivers
 # ════════════════════════════════════════════════════════════════════════════
 with tab1:
