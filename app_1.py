@@ -342,14 +342,26 @@ for _q in sync_pull(st.session_state.sync_code):
 if _new_synced:
     st.toast(f"🔄 {_new_synced} new quote{'s' if _new_synced != 1 else ''} synced in from your batch runs")
 
-# ── Session save / restore ────────────────────────────────────────────────────
-with st.sidebar:
-    session_data = {
-        "vehicle": st.session_state.vehicle,
-        "drivers": st.session_state.drivers,
-        "quotes": st.session_state.quotes,
-        "selected_insurers": sorted(st.session_state.selected_insurers),
-    }
+# ── Sticky top bar CSS ────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+    .sticky-bar { position:sticky; top:0; z-index:999; background:white; padding:6px 0 8px 0;
+                  border-bottom:1px solid #e8e8e8; margin-bottom:12px; }
+    /* Hide file uploader helper text */
+    [data-testid="stFileUploader"] section > div:last-child { display:none !important; }
+    [data-testid="stFileUploader"] small { display:none !important; }
+</style>
+""", unsafe_allow_html=True)
+
+# ── Session save / restore (top bar) ─────────────────────────────────────────
+session_data = {
+    "vehicle": st.session_state.vehicle,
+    "drivers": st.session_state.drivers,
+    "quotes": st.session_state.quotes,
+    "selected_insurers": sorted(st.session_state.selected_insurers),
+}
+col_save, col_restore_file, col_restore_btn = st.columns([1, 2, 1])
+with col_save:
     st.download_button(
         "💾 Save",
         data=json.dumps(session_data, indent=2, default=str),
@@ -357,7 +369,9 @@ with st.sidebar:
         mime="application/json",
         width="stretch",
     )
+with col_restore_file:
     restore_file = st.file_uploader("Restore", type=["json"], key="restore_upload", label_visibility="collapsed")
+with col_restore_btn:
     if restore_file is not None and st.button("↩️ Restore", width="stretch"):
         try:
             data = json.loads(restore_file.read().decode("utf-8"))
@@ -394,9 +408,7 @@ with tab_help:
 
     st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Step by Step</div>', unsafe_allow_html=True)
 
-    with st.expander("✨ Auto-fill from your renewal notice or insurance slip", expanded=True):
-
-        chrome_prefill_prompt = """I've uploaded my motor insurance renewal notice or insurance slip.
+    chrome_prefill_prompt = """I've uploaded my motor insurance renewal notice or insurance slip.
 
 Using the Claude in Chrome extension, please:
 
@@ -422,54 +434,66 @@ If any permission prompts appear from the Chrome extension, select "Always allow
 
 Once all fields are filled, click the "Save Details" button at the bottom of the form."""
 
-        st.markdown("""1. Open **[claude.ai](https://claude.ai)** in another tab · 2. Upload your document — including both the renewal notice and certificate of insurance will lead to faster results · 3. Copy & paste the prompt below · 4. Run the prompt · 5. Approve any Chrome extension permission prompts · 6. Claude fills in the form for you""")
-        st.text_area("Prompt to copy:", value=chrome_prefill_prompt, height=100, label_visibility="collapsed")
+    st.markdown("**1.** Open **[claude.ai](https://claude.ai)** in another tab")
+    st.markdown("**2.** Upload your renewal notice and certificate of insurance — including both will lead to faster results")
+    col_s3a, col_s3b = st.columns([3, 1])
+    with col_s3a:
+        st.markdown("**3.** Copy the prefill prompt into your Claude chat")
+    with col_s3b:
+        st.download_button("⬇️ Prefill prompt", data=chrome_prefill_prompt,
+                           file_name="prefill_prompt.txt", mime="text/plain", width="stretch")
+    st.markdown("**4.** Run the prompt")
+    st.markdown("**5.** Approve any Chrome extension permission prompts")
+    st.markdown("**6.** Claude fills in the form for you")
 
-    # ── Insurer selection grid ────────────────────────────────────────────────
+    # ── Insurer selection grid (grouped by underwriter) ───────────────────────
     st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
 
-    all_selectable_insurers = [
-        "GIO", "AAMI", "Suncorp", "APIA", "Bingle",
-        "NRMA", "ROLLiN'", "RACV", "ANZ", "Bendigo Bank",
-        "Budget Direct", "Qantas", "Coles", "ING", "Australia Post", "Kogan",
-        "Allianz", "Westpac", "St.George", "BankSA", "NAB", "HSBC", "TIO", "Beyond Bank",
-        "Woolworths", "Real Insurance", "Australian Seniors", "CBA", "Huddle",
-        "Ozicare", "TrueCover", "Everyday", "Over Fifty", "National Seniors",
-        "QBE", "Stella",
-        "RACQ", "BOQ", "ALDI",
-        "Bupa", "BMW", "Mercedes-Benz", "Australian Unity", "ahm",
-        "pd.com.au", "UbiCar", "Carpeesh", "Blue Badge", "Ryno", "Hume", "Club 4x4",
-        "RAA", "RAC", "RACT",
-        "KOBA",
+    insurer_groups_ordered = [
+        ("Suncorp Group", ["GIO", "AAMI", "Suncorp", "APIA", "Bingle"]),
+        ("IAG", ["NRMA", "ROLLiN'", "RACV", "ANZ", "Bendigo Bank", "RACQ", "BOQ"]),
+        ("Auto & General", ["Budget Direct", "Qantas", "Coles", "ING", "Australia Post", "Kogan"]),
+        ("Allianz", ["Allianz", "Westpac", "St.George", "BankSA", "NAB", "HSBC", "TIO", "Beyond Bank", "BMW", "Mercedes-Benz", "RAA"]),
+        ("Hollard", ["Woolworths", "Real Insurance", "Australian Seniors", "CBA", "Huddle", "Ozicare", "TrueCover", "Everyday", "Over Fifty", "National Seniors"]),
+        ("QBE", ["QBE", "Stella"]),
+        ("RACQ Insurance", ["ALDI"]),
+        ("Other", ["Bupa", "Australian Unity", "ahm", "pd.com.au", "UbiCar", "Carpeesh", "Blue Badge", "Ryno", "Hume", "Club 4x4", "RAC", "RACT", "KOBA"]),
     ]
 
+    # Build flat list for master prompt ordering
+    all_selectable_insurers = []
+    for _, members in insurer_groups_ordered:
+        all_selectable_insurers.extend(members)
+
     n_cols = 7
-    cols = st.columns(n_cols)
-    for idx, ins in enumerate(all_selectable_insurers):
-        bg, fg = BRAND_COLORS.get(ins.upper(), ("#666", "#fff"))
-        with cols[idx % n_cols]:
-            is_selected = st.checkbox(
-                ins, key=f"sel_{ins}",
-                value=ins in st.session_state.selected_insurers
-            )
-            if is_selected:
-                st.session_state.selected_insurers.add(ins)
-                fsize = "0.72rem" if len(ins) > 12 else ("0.78rem" if len(ins) > 8 else "0.85rem")
-                st.markdown(f'<div class="brand-card brand-on" style="background:{bg};font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
-            else:
-                st.session_state.selected_insurers.discard(ins)
-                fsize = "0.72rem" if len(ins) > 12 else ("0.78rem" if len(ins) > 8 else "0.85rem")
-                st.markdown(f'<div class="brand-card brand-off" style="font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
+    for group_name, group_insurers in insurer_groups_ordered:
+        st.markdown(f'<div style="font-size:0.75rem;color:#999;margin-top:12px;margin-bottom:2px">{group_name}</div>', unsafe_allow_html=True)
+        cols = st.columns(n_cols)
+        for idx, ins in enumerate(group_insurers):
+            bg, _ = BRAND_COLORS.get(ins.upper(), ("#666", "#fff"))
+            with cols[idx % n_cols]:
+                is_selected = st.checkbox(
+                    ins, key=f"sel_{ins}",
+                    value=ins in st.session_state.selected_insurers
+                )
+                if is_selected:
+                    st.session_state.selected_insurers.add(ins)
+                    fsize = "0.72rem" if len(ins) > 12 else ("0.78rem" if len(ins) > 8 else "0.85rem")
+                    st.markdown(f'<div class="brand-card brand-on" style="background:{bg};font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
+                else:
+                    st.session_state.selected_insurers.discard(ins)
+                    fsize = "0.72rem" if len(ins) > 12 else ("0.78rem" if len(ins) > 8 else "0.85rem")
+                    st.markdown(f'<div class="brand-card brand-off" style="font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
 
     st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
 
     n_selected = len(st.session_state.selected_insurers)
     if n_selected > 0:
-        st.success(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected.")
+        st.success(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected")
 
         # ── Master prompt: fully automated run ───────────────────────────────
         st.markdown('<div class="section-title" style="margin-top:1.5rem">🚀 Fully Automated Run</div>', unsafe_allow_html=True)
-        st.caption("The lowest-touch option: drag your renewal notice into a new Claude chat, paste this prompt, walk away. Claude extracts your details, fills in this app, quotes every selected insurer in sequence and delivers the results here automatically.")
+        st.caption("The lowest-touch option: drag your renewal notice into a new Claude chat, paste this prompt, walk away.")
 
         master_app_url = _detect_app_url()
         master_sync_url = (f"{master_app_url}/?sync={st.session_state.sync_code}"
@@ -519,12 +543,12 @@ Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amou
 5. Click "Parse & Add Quotes"
 6. Finally, report the full results and any failures back to me in chat"""
 
-        st.text_area(
-            "Drag your renewal notice into a new Claude chat, then paste this:",
-            value=master_prompt,
-            height=150,
-            key="master_prompt",
-            label_visibility="visible"
+        st.download_button(
+            "⬇️ Download master prompt",
+            data=master_prompt,
+            file_name="master_prompt.txt",
+            mime="text/plain",
+            width="stretch",
         )
         st.info(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
 
@@ -631,12 +655,13 @@ INSURERS TO QUOTE (in order):
 {finish_block}"""
 
                     with st.expander(f"**{batch_label}** — {batch_names}", expanded=(batch_idx == 0)):
-                        st.text_area(
-                            "Copy into a new Claude chat with Chrome extension active:",
-                            value=batch_prompt,
-                            height=150,
-                            key=f"batch_prompt_{batch_idx}",
-                            label_visibility="visible"
+                        st.download_button(
+                            f"⬇️ Download batch {batch_idx + 1} prompt",
+                            data=batch_prompt,
+                            file_name=f"batch_{batch_idx + 1}_prompt.txt",
+                            mime="text/plain",
+                            width="stretch",
+                            key=f"dl_batch_{batch_idx}",
                         )
 
 # ════════════════════════════════════════════════════════════════════════════
