@@ -356,6 +356,10 @@ st.markdown("""
 <style>
     .sticky-bar { position:sticky; top:0; z-index:999; background:white; padding:6px 0 8px 0;
                   border-bottom:1px solid #e8e8e8; margin-bottom:12px; }
+    /* Freeze save/upload row at top */
+    [data-testid="stMainBlockContainer"] > div:first-child { position:sticky; top:0; z-index:998; background:white; padding-bottom:4px; border-bottom:1px solid #eee; }
+    /* Selectbox selected option — charcoal */
+    [data-testid="stSelectbox"] [data-baseweb="select"] { color:#333 !important; }
     /* Hide file uploader helper text and grey box */
     [data-testid="stFileUploader"] section > div:last-child { display:none !important; }
     [data-testid="stFileUploader"] small { display:none !important; }
@@ -477,7 +481,7 @@ For any fields not found in the document, leave them blank.
 
 If any permission prompts appear from the Chrome extension, select "Always allow".
 
-Once all fields are filled, click the "Save Details" button at the bottom of the form."""
+Once all fields are filled, the details save automatically."""
 
     st.markdown("**1.** Select brands you want to quote — lower down on this page")
     n_selected = len(st.session_state.selected_insurers)
@@ -485,11 +489,11 @@ Once all fields are filled, click the "Save Details" button at the bottom of the
         st.success(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected")
     st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in a new window")
     st.markdown("**3.** Click the claude icon at the top right of the window but do NOT press run")
-    st.markdown("**4.** Upload your renewal notice and certificate of insurance — including both will lead to faster results")
+    st.markdown("**4.** Drag and drop your renewal notice and certificate of insurance — including both will lead to faster results")
     st.markdown("**5.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/)")
     import base64 as _b64
     _prompt_b64 = _b64.b64encode(chrome_prefill_prompt.encode()).decode()
-    st.markdown(f'**6.** Copy the <a href="data:text/plain;base64,{_prompt_b64}" download="prefill_prompt.txt">prefill prompt</a> into your Claude chat', unsafe_allow_html=True)
+    st.markdown(f'**6.** Copy the <a href="data:text/plain;base64,{_prompt_b64}" download="prefill_prompt.txt">prefill prompt</a> into your Claude chat on the right hand side', unsafe_allow_html=True)
     st.markdown("**7.** Run the prompt by pressing the orange arrow in the panel on the bottom right")
     st.markdown("**8.** Approve any Chrome extension permission prompts")
     st.markdown("**9.** Claude fills in the form for you")
@@ -497,12 +501,12 @@ Once all fields are filled, click the "Save Details" button at the bottom of the
     insurer_groups_ordered = [
         ("Suncorp Group", ["GIO", "AAMI", "Suncorp", "APIA", "Bingle"]),
         ("IAG", ["NRMA", "RACV", "ANZ", "Bendigo Bank", "RACQ", "BOQ", "ROLLiN'"]),
-        ("Auto & General", ["Budget Direct", "Qantas", "Coles", "ING", "Australia Post", "Kogan"]),
         ("Allianz", ["Allianz", "Westpac", "St.George", "BankSA", "NAB", "HSBC", "TIO",
                      "Beyond Bank", "BMW", "Mercedes-Benz", "RAA"]),
+        ("QBE", ["QBE", "Stella"]),
+        ("Auto & General", ["Budget Direct", "Qantas", "Coles", "ING", "Australia Post", "Kogan"]),
         ("Hollard", ["Real Insurance", "Woolworths", "Australian Seniors", "CBA", "Huddle",
                      "Ozicare", "TrueCover", "Everyday", "Over Fifty", "National Seniors"]),
-        ("QBE", ["QBE", "Stella"]),
         ("Other", ["ALDI", "Bupa", "Australian Unity", "ahm", "pd.com.au", "UbiCar", "Carpeesh",
                    "Blue Badge", "Ryno", "Hume", "Club 4x4", "RAC", "RACT", "KOBA"]),
     ]
@@ -512,9 +516,6 @@ Once all fields are filled, click the "Save Details" button at the bottom of the
         all_selectable_insurers.extend(members)
 
     if n_selected > 0:
-
-        st.markdown("**10.** Download the master prompt and paste into your Claude chat")
-        st.caption("The lowest-touch option: drag your renewal notice into a new Claude chat, paste this prompt, walk away.")
 
         master_app_url = _detect_app_url()
         master_sync_url = (f"{master_app_url}/?sync={st.session_state.sync_code}"
@@ -539,7 +540,7 @@ PHASE 2 — FILL IN THE APP
 1. Open this exact link in a new browser tab: {master_sync_url}
 2. Go to the "Vehicle & Drivers" tab
 3. Fill in every field you extracted — pick the closest matching dropdown options, leave unknown fields blank
-4. Click "Save Details" at the bottom
+4. Details save automatically once filled in
 
 PHASE 3 — GET QUOTES ({m_i} insurers, one at a time, in this order)
 Rules for every insurer:
@@ -564,13 +565,8 @@ Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amou
 5. Click "Parse & Add Quotes"
 6. Finally, report the full results and any failures back to me in chat"""
 
-        st.download_button(
-            "⬇️ Download master prompt",
-            data=master_prompt,
-            file_name="master_prompt.txt",
-            mime="text/plain",
-            width="stretch",
-        )
+        _master_b64 = _b64.b64encode(master_prompt.encode()).decode()
+        st.markdown(f'**10.** Download the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> and paste into your Claude chat', unsafe_allow_html=True)
         st.info(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
 
         # ── Step 6: Batch prompts (available after vehicle data is saved) ─────
@@ -761,8 +757,9 @@ with tab1:
         day_suburb = st.text_input("Daytime Parking Suburb", value=st.session_state.vehicle.get("day_suburb", ""))
         day_postcode = st.text_input("Daytime Postcode", value=st.session_state.vehicle.get("day_postcode", ""))
     with col3:
-        usage = st.multiselect("Vehicle Usage", ["Private", "Commute", "Business"],
-                               default=st.session_state.vehicle.get("usage", ["Private"]))
+        usage = st.selectbox("Vehicle Usage", ["Private", "Public"],
+                              index=["Private", "Public"].index(
+                                  st.session_state.vehicle.get("usage", "Private") if isinstance(st.session_state.vehicle.get("usage"), str) else "Private"))
         finance = st.selectbox("Financed?", ["No", "Yes"],
                                index=["No","Yes"].index(st.session_state.vehicle.get("finance", "No")))
 
@@ -812,28 +809,24 @@ with tab1:
                                  index=["None","1","2","3+"].index(
                                      st.session_state.drivers.get("d2_claims", "None")))
 
-    if st.button("💾  Save Details", width="stretch"):
-        st.session_state.vehicle = {
-            "year": year, "make": make, "model": model, "variant": variant,
-            "rego": rego, "rego_state": rego_state, "cover_type": cover_type,
-            "sum_insured": sum_insured, "annual_kms": annual_kms,
-            "overnight_suburb": overnight_suburb, "overnight_postcode": overnight_postcode,
-            "day_suburb": day_suburb, "day_postcode": day_postcode,
-            "usage": usage, "finance": finance,
-            "start_date": start_date, "previous_insurer": previous_insurer,
-            "excess": excess
-        }
-        st.session_state.drivers = {
-            "d1_name": d1_name, "d1_dob": d1_dob, "d1_gender": d1_gender,
-            "d1_licence": d1_licence, "d1_claims": d1_claims,
-            "d2_name": d2_name, "d2_dob": d2_dob, "d2_gender": d2_gender,
-            "d2_licence": d2_licence, "d2_claims": d2_claims,
-        }
-        st.success("✅ Details saved! Switching to Instructions...")
-        st.markdown("""<script>
-            const tabs = window.parent.document.querySelectorAll('button[data-baseweb="tab"]');
-            if (tabs.length >= 1) tabs[0].click();
-        </script>""", unsafe_allow_html=True)
+    # Auto-save vehicle and driver details
+    st.session_state.vehicle = {
+        "year": year, "make": make, "model": model, "variant": variant,
+        "rego": rego, "rego_state": rego_state, "cover_type": cover_type,
+        "sum_insured": sum_insured, "annual_kms": annual_kms,
+        "overnight_suburb": overnight_suburb, "overnight_postcode": overnight_postcode,
+        "day_suburb": day_suburb, "day_postcode": day_postcode,
+        "usage": usage, "finance": finance,
+        "start_date": start_date, "previous_insurer": previous_insurer,
+        "excess": excess
+    }
+    st.session_state.drivers = {
+        "d1_name": d1_name, "d1_dob": d1_dob, "d1_gender": d1_gender,
+        "d1_licence": d1_licence, "d1_claims": d1_claims,
+        "d2_name": d2_name, "d2_dob": d2_dob, "d2_gender": d2_gender,
+        "d2_licence": d2_licence, "d2_claims": d2_claims,
+    }
+    st.caption("💾 Details are saved automatically")
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 2 — Add Quotes
@@ -1108,20 +1101,4 @@ Figures shown are complaints received in FY2024-25 at underwriter group level. F
 
         df = pd.DataFrame(table_data)
         st.dataframe(df, width="stretch", hide_index=True)
-
-        st.markdown("---")
-        col1, col2 = st.columns(2)
-        with col1:
-            csv = df.to_csv(index=False)
-            st.download_button(
-                "⬇️  Download as CSV",
-                data=csv,
-                file_name=f"motor_quotes_{date.today().strftime('%d%m%y')}.csv",
-                mime="text/csv",
-                width="stretch"
-            )
-        with col2:
-            if st.button("🗑  Clear All Quotes", width="stretch"):
-                st.session_state.quotes = []
-                st.rerun()
 
