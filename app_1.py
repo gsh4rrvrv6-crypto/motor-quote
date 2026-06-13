@@ -209,17 +209,20 @@ st.markdown("""
     .date-hint { font-size:0.75rem; color:#999; margin-top:-12px; margin-bottom:8px; }
     .brand-card {
         border-radius:8px; padding:10px 6px; text-align:center; font-weight:700;
-        min-height:38px; display:flex; align-items:center; justify-content:center;
+        height:40px; display:flex; align-items:center; justify-content:center;
+        margin-bottom:6px;
     }
     .brand-off { background:#f0f0f0; color:#333; }
     .brand-on { color:#fff; }
     .brand-label { font-size:0.65rem; color:#888; font-weight:400; margin-top:2px; }
-    /* Hide checkbox completely — card is the visual, checkbox catches clicks */
-    [data-testid="stCheckbox"] label { cursor:pointer; min-height:38px; }
+    /* Make checkbox fill entire card area — whole tile is the button */
+    [data-testid="stCheckbox"] { margin-bottom:-48px; position:relative; z-index:10; opacity:0; min-height:40px; }
+    [data-testid="stCheckbox"] label { cursor:pointer; min-height:40px; width:100%; display:block; }
     [data-testid="stCheckbox"] label span { font-size:0 !important; line-height:0 !important; }
     [data-testid="stCheckbox"] label svg { display:none !important; }
     [data-testid="stCheckbox"] label > div:first-child { display:none !important; }
-    [data-testid="stCheckbox"] { margin-bottom:-42px; position:relative; z-index:10; opacity:0; }
+    /* Group title spacing — closer to tiles below */
+    .group-label { font-size:0.72rem; color:#999; margin-top:14px; margin-bottom:-4px; padding:0; line-height:1; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -259,14 +262,12 @@ if "drivers" not in st.session_state:
     st.session_state.drivers = {}
 if "selected_insurers" not in st.session_state:
     st.session_state.selected_insurers = {
-        "GIO", "AAMI", "Suncorp", "Bingle",
-        "NRMA", "ROLLiN'", "ANZ", "Bendigo Bank",
-        "Budget Direct", "Qantas", "Coles", "ING",
-        "Allianz", "Westpac", "St.George",
-        "Woolworths", "Real Insurance", "CBA", "Huddle",
+        "GIO", "AAMI",
+        "NRMA", "ANZ",
+        "Budget Direct", "Qantas",
+        "Allianz",
+        "Woolworths", "Real Insurance", "CBA",
         "QBE",
-        "RACQ", "BOQ",
-        "RAC", "RACT", "RACV",
     }
 
 # ── Cross-session quote sync (lets batch runs deliver quotes automatically) ──
@@ -347,9 +348,18 @@ st.markdown("""
 <style>
     .sticky-bar { position:sticky; top:0; z-index:999; background:white; padding:6px 0 8px 0;
                   border-bottom:1px solid #e8e8e8; margin-bottom:12px; }
-    /* Hide file uploader helper text */
+    /* Hide file uploader helper text and grey box */
     [data-testid="stFileUploader"] section > div:last-child { display:none !important; }
     [data-testid="stFileUploader"] small { display:none !important; }
+    [data-testid="stFileUploader"] section { border:none !important; padding:0 !important; }
+    [data-testid="stFileUploader"] section > button {
+        background:#f8f9fa !important; color:#333 !important; border:1px solid #ddd !important;
+        border-radius:8px !important; font-weight:600 !important; font-size:0.85rem !important;
+        padding:0.4rem 1rem !important; width:100% !important;
+    }
+    [data-testid="stFileUploader"] section > button:hover {
+        background:#e9ecef !important; border-color:#ccc !important;
+    }
     /* Consistent save/restore button style */
     .session-bar button, .session-bar [data-testid="stDownloadButton"] button {
         background:#f8f9fa !important; color:#333 !important; border:1px solid #ddd !important;
@@ -415,6 +425,7 @@ with tab_help:
 - The **[Claude in Chrome extension](https://chromewebstore.google.com/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh)** — this is what lets Claude fill in forms in your browser
 """)
 
+
     st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Step by Step</div>', unsafe_allow_html=True)
 
     chrome_prefill_prompt = """I've uploaded my motor insurance renewal notice or insurance slip.
@@ -443,56 +454,68 @@ If any permission prompts appear from the Chrome extension, select "Always allow
 
 Once all fields are filled, click the "Save Details" button at the bottom of the form."""
 
-    st.markdown("**1.** Open **[claude.ai](https://claude.ai)** in another tab")
-    st.markdown("**2.** Upload your renewal notice and certificate of insurance — including both will lead to faster results")
-    col_s3a, col_s3b = st.columns([3, 1])
-    with col_s3a:
-        st.markdown("**3.** Copy the prefill prompt into your Claude chat")
-    with col_s3b:
+    st.markdown("**1.** Select brands you want to quote")
+    st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in another tab")
+    st.markdown("**3.** Click the Claude icon at the top right of the window but do NOT press run")
+    st.markdown("**4.** Upload your renewal notice and certificate of insurance — including both will lead to faster results")
+    st.markdown("**5.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/)")
+    col_s6, col_s6b = st.columns([4, 1])
+    with col_s6:
+        st.markdown("**6.** Copy the prefill prompt into your Claude chat")
+    with col_s6b:
         st.download_button("⬇️ Prefill prompt", data=chrome_prefill_prompt,
                            file_name="prefill_prompt.txt", mime="text/plain", width="stretch")
-    st.markdown("**4.** Run the prompt")
-    st.markdown("**5.** Approve any Chrome extension permission prompts")
-    st.markdown("**6.** Claude fills in the form for you")
+    st.markdown("**7.** Run the prompt")
+    st.markdown("**8.** Approve any Chrome extension permission prompts")
+    st.markdown("**9.** Claude fills in the form for you")
 
-    # ── Insurer selection grid (grouped by underwriter) ───────────────────────
+    # ── Insurer selection grid (grouped by underwriter, row-aligned) ──────────
     st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
 
     insurer_groups_ordered = [
         ("Suncorp Group", ["GIO", "AAMI", "Suncorp", "APIA", "Bingle"]),
-        ("IAG", ["NRMA", "ROLLiN'", "RACV", "ANZ", "Bendigo Bank", "RACQ", "BOQ"]),
+        ("IAG", ["NRMA", "RACV", "ANZ", "Bendigo Bank", "RACQ", "BOQ", "ROLLiN'"]),
         ("Auto & General", ["Budget Direct", "Qantas", "Coles", "ING", "Australia Post", "Kogan"]),
-        ("Allianz", ["Allianz", "Westpac", "St.George", "BankSA", "NAB", "HSBC", "TIO", "Beyond Bank", "BMW", "Mercedes-Benz", "RAA"]),
-        ("Hollard", ["Woolworths", "Real Insurance", "Australian Seniors", "CBA", "Huddle", "Ozicare", "TrueCover", "Everyday", "Over Fifty", "National Seniors"]),
+        ("Allianz", ["Allianz", "Westpac", "St.George", "BankSA", "NAB", "HSBC", "TIO",
+                     "Beyond Bank", "BMW", "Mercedes-Benz", "RAA"]),
+        ("Hollard", ["Woolworths", "Real Insurance", "Australian Seniors", "CBA", "Huddle",
+                     "Ozicare", "TrueCover", "Everyday", "Over Fifty", "National Seniors"]),
         ("QBE", ["QBE", "Stella"]),
         ("RACQ Insurance", ["ALDI"]),
-        ("Other", ["Bupa", "Australian Unity", "ahm", "pd.com.au", "UbiCar", "Carpeesh", "Blue Badge", "Ryno", "Hume", "Club 4x4", "RAC", "RACT", "KOBA"]),
+        ("Other", ["Bupa", "Australian Unity", "ahm", "pd.com.au", "UbiCar", "Carpeesh",
+                   "Blue Badge", "Ryno", "Hume", "Club 4x4", "RAC", "RACT", "KOBA"]),
     ]
 
-    # Build flat list for master prompt ordering
     all_selectable_insurers = []
     for _, members in insurer_groups_ordered:
         all_selectable_insurers.extend(members)
 
     n_cols = 7
     for group_name, group_insurers in insurer_groups_ordered:
-        st.markdown(f'<div style="font-size:0.75rem;color:#999;margin-top:12px;margin-bottom:2px">{group_name}</div>', unsafe_allow_html=True)
-        cols = st.columns(n_cols)
-        for idx, ins in enumerate(group_insurers):
-            bg, _ = BRAND_COLORS.get(ins.upper(), ("#666", "#fff"))
-            with cols[idx % n_cols]:
-                is_selected = st.checkbox(
-                    ins, key=f"sel_{ins}",
-                    value=ins in st.session_state.selected_insurers
-                )
-                if is_selected:
-                    st.session_state.selected_insurers.add(ins)
-                    fsize = "0.72rem" if len(ins) > 12 else ("0.78rem" if len(ins) > 8 else "0.85rem")
-                    st.markdown(f'<div class="brand-card brand-on" style="background:{bg};font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
-                else:
-                    st.session_state.selected_insurers.discard(ins)
-                    fsize = "0.72rem" if len(ins) > 12 else ("0.78rem" if len(ins) > 8 else "0.85rem")
-                    st.markdown(f'<div class="brand-card brand-off" style="font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="group-label">{group_name}</div>', unsafe_allow_html=True)
+        for row_start in range(0, len(group_insurers), n_cols):
+            row_slice = group_insurers[row_start:row_start + n_cols]
+            cols = st.columns(n_cols)
+            for col_idx in range(n_cols):
+                with cols[col_idx]:
+                    if col_idx < len(row_slice):
+                        ins = row_slice[col_idx]
+                        bg, _ = BRAND_COLORS.get(ins.upper(), ("#666", "#fff"))
+                        is_selected = st.checkbox(
+                            ins, key=f"sel_{ins}",
+                            value=ins in st.session_state.selected_insurers
+                        )
+                        if is_selected:
+                            st.session_state.selected_insurers.add(ins)
+                        else:
+                            st.session_state.selected_insurers.discard(ins)
+                        fsize = "0.68rem" if len(ins) > 14 else ("0.72rem" if len(ins) > 10 else ("0.78rem" if len(ins) > 7 else "0.85rem"))
+                        if is_selected:
+                            st.markdown(f'<div class="brand-card brand-on" style="background:{bg};font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
+                        else:
+                            st.markdown(f'<div class="brand-card brand-off" style="font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
+                    else:
+                        st.empty()
 
     st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
 
