@@ -350,6 +350,15 @@ st.markdown("""
     /* Hide file uploader helper text */
     [data-testid="stFileUploader"] section > div:last-child { display:none !important; }
     [data-testid="stFileUploader"] small { display:none !important; }
+    /* Consistent save/restore button style */
+    .session-bar button, .session-bar [data-testid="stDownloadButton"] button {
+        background:#f8f9fa !important; color:#333 !important; border:1px solid #ddd !important;
+        border-radius:8px !important; font-weight:600 !important; font-size:0.85rem !important;
+        padding:0.4rem 1rem !important;
+    }
+    .session-bar button:hover, .session-bar [data-testid="stDownloadButton"] button:hover {
+        background:#e9ecef !important; border-color:#ccc !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
