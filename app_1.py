@@ -477,14 +477,13 @@ If any permission prompts appear from the Chrome extension, select "Always allow
 
 Once all fields are filled, the details save automatically."""
 
-    st.markdown('**1.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/) then right click the tab and select "Add tab to new group" then "Claude"')
-    st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in a new window")
-    st.markdown("**3.** Drag and drop your renewal notice and certificate of insurance — including both will lead to faster results — and press run")
+    st.markdown('**1.** Open **[claude.ai](https://claude.ai)** in a new window')
+    st.markdown('**2.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/) (must be in a new window) then right click the tab and select "Add tab to new group" then "Claude"')
+    st.markdown("**3.** Drag and drop your renewal notice and certificate of insurance into claude — including both will lead to faster results — and press run")
     st.markdown("**4.** Click the claude icon at the top right of the window")
-    st.markdown("**5.** Select brands you want to quote — lower down on this page")
+    st.markdown("**5.** Select the cheapest version of claude to save on tokens (minimum Sonnet 4.6)")
+    st.markdown("**6.** Select brands you want to quote — lower down on this page")
     n_selected = len(st.session_state.selected_insurers)
-    if n_selected > 0:
-        st.success(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected")
 
     insurer_groups_ordered = [
         ("Suncorp Group", ["GIO", "AAMI", "Suncorp", "APIA", "Bingle"]),
@@ -555,10 +554,10 @@ Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amou
 
         import base64 as _b64
         _master_b64 = _b64.b64encode(master_prompt.encode()).decode()
-        st.markdown(f'**6.** Download the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> and paste into your Claude chat', unsafe_allow_html=True)
-        st.markdown("**7.** Run the prompt by pressing the orange arrow in the panel on the bottom right")
-        st.markdown("**8.** Approve any Chrome extension permission prompts")
-        st.markdown("**9.** Claude does the rest")
+        st.markdown(f'**7.** Download the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> and paste into your Claude chat', unsafe_allow_html=True)
+        st.markdown("**8.** Run the prompt by pressing the orange arrow in the panel on the bottom right")
+        st.markdown('**9.** Click "Approve Plan"')
+        st.markdown("**10.** Claude does the rest")
         st.info(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
 
         # ── Step 6: Batch prompts (available after vehicle data is saved) ─────
