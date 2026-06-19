@@ -217,10 +217,11 @@ st.markdown("""
     .brand-label { font-size:0.65rem; color:#888; font-weight:400; margin-top:2px; }
     /* Make checkbox fill entire card area — whole tile is the button */
     [data-testid="stCheckbox"] { margin-bottom:-48px; position:relative; z-index:10; opacity:0; height:40px !important; min-height:40px !important; max-height:40px !important; overflow:hidden; }
-    [data-testid="stCheckbox"] label { cursor:pointer; height:40px !important; width:100%; display:block; }
-    [data-testid="stCheckbox"] label span { font-size:0 !important; line-height:0 !important; }
+    [data-testid="stCheckbox"] label { cursor:pointer; height:40px !important; width:100% !important; display:block !important; position:relative; }
+    [data-testid="stCheckbox"] label span { font-size:0 !important; line-height:0 !important; width:100% !important; display:block !important; height:100% !important; }
     [data-testid="stCheckbox"] label svg { display:none !important; }
     [data-testid="stCheckbox"] label > div:first-child { display:none !important; }
+    [data-testid="stCheckbox"] label > div { width:100% !important; height:100% !important; }
     /* Force every column element to uniform size */
     [data-testid="stColumn"] > div { padding-top:0 !important; }
     [data-testid="stColumn"] [data-testid="stCheckbox"] + div { margin-top:0 !important; padding-top:0 !important; }
@@ -269,14 +270,7 @@ if "vehicle" not in st.session_state:
 if "drivers" not in st.session_state:
     st.session_state.drivers = {}
 if "selected_insurers" not in st.session_state:
-    st.session_state.selected_insurers = {
-        "GIO", "AAMI",
-        "NRMA",
-        "Budget Direct",
-        "Allianz",
-        "Real Insurance",
-        "QBE",
-    }
+    st.session_state.selected_insurers = {"GIO"}
 
 # ── Cross-session quote sync (lets batch runs deliver quotes automatically) ──
 SYNC_DIR = "/tmp/mqc_sync"
@@ -483,20 +477,14 @@ If any permission prompts appear from the Chrome extension, select "Always allow
 
 Once all fields are filled, the details save automatically."""
 
-    st.markdown("**1.** Select brands you want to quote — lower down on this page")
+    st.markdown('**1.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/) then right click the tab and select "Add tab to new group" then "Claude"')
+    st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in a new window")
+    st.markdown("**3.** Drag and drop your renewal notice and certificate of insurance — including both will lead to faster results — and press run")
+    st.markdown("**4.** Click the claude icon at the top right of the window")
+    st.markdown("**5.** Select brands you want to quote — lower down on this page")
     n_selected = len(st.session_state.selected_insurers)
     if n_selected > 0:
         st.success(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected")
-    st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in a new window")
-    st.markdown("**3.** Click the claude icon at the top right of the window but do NOT press run")
-    st.markdown("**4.** Drag and drop your renewal notice and certificate of insurance — including both will lead to faster results")
-    st.markdown("**5.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/)")
-    import base64 as _b64
-    _prompt_b64 = _b64.b64encode(chrome_prefill_prompt.encode()).decode()
-    st.markdown(f'**6.** Copy the <a href="data:text/plain;base64,{_prompt_b64}" download="prefill_prompt.txt">prefill prompt</a> into your Claude chat on the right hand side', unsafe_allow_html=True)
-    st.markdown("**7.** Run the prompt by pressing the orange arrow in the panel on the bottom right")
-    st.markdown("**8.** Approve any Chrome extension permission prompts")
-    st.markdown("**9.** Claude fills in the form for you")
 
     insurer_groups_ordered = [
         ("Suncorp Group", ["GIO", "AAMI", "Suncorp", "APIA", "Bingle"]),
@@ -565,8 +553,12 @@ Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amou
 5. Click "Parse & Add Quotes"
 6. Finally, report the full results and any failures back to me in chat"""
 
+        import base64 as _b64
         _master_b64 = _b64.b64encode(master_prompt.encode()).decode()
-        st.markdown(f'**10.** Download the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> and paste into your Claude chat', unsafe_allow_html=True)
+        st.markdown(f'**6.** Download the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> and paste into your Claude chat', unsafe_allow_html=True)
+        st.markdown("**7.** Run the prompt by pressing the orange arrow in the panel on the bottom right")
+        st.markdown("**8.** Approve any Chrome extension permission prompts")
+        st.markdown("**9.** Claude does the rest")
         st.info(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
 
         # ── Step 6: Batch prompts (available after vehicle data is saved) ─────
