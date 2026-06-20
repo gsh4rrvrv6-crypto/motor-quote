@@ -558,9 +558,6 @@ Click "Parse & Add Quotes". Then report results back in chat."""
     # ── Insurer selection grid (grouped by underwriter, row-aligned) ──────────
     st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
 
-    # ── Insurer selection grid (grouped by underwriter, row-aligned) ──────────
-    st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
-
     n_cols = 7
     for group_name, group_insurers in insurer_groups_ordered:
         st.markdown(f'<div class="group-label">{group_name}</div>', unsafe_allow_html=True)
