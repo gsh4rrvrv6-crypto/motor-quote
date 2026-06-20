@@ -562,10 +562,10 @@ Click "Parse & Add Quotes". Go."""
         batch_prompts.append((_b64.b64encode(bp.encode()).decode(), ", ".join(batch), len(batch)))
 
     # ── Steps (always show full flow) ─────────────────────────────────────
-    steps_placeholder.markdown("**4.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar — select **Sonnet** for speed and if this is not working try **Opus**")
+    steps_placeholder.markdown(f'**4.** Drag and drop your renewal notice and certificate of insurance into the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a>, and press run — Claude fills the Vehicle & Drivers tab for you', unsafe_allow_html=True)
+    steps_placeholder.markdown("**5.** Check the **Vehicle & Drivers** tab — edit anything that's wrong")
+    steps_placeholder.markdown("**6.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar — select **Sonnet** for speed and if this is not working try **Opus**")
     steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
-    steps_placeholder.markdown(f'**5.** Drag and drop your renewal notice and certificate of insurance into the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a>, and press run — Claude fills the Vehicle & Drivers tab for you', unsafe_allow_html=True)
-    steps_placeholder.markdown("**6.** Check the **Vehicle & Drivers** tab — edit anything that's wrong")
 
     if len(batches) <= 1:
         if batch_prompts:
@@ -583,6 +583,12 @@ Click "Parse & Add Quotes". Go."""
         steps_placeholder.markdown("   " + " · ".join(step_parts), unsafe_allow_html=True)
         steps_placeholder.markdown(f"**8.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
         steps_placeholder.markdown("**9.** Results appear in the Compare tab")
+
+    if n_selected > 0:
+        if len(batches) <= 1:
+            steps_placeholder.info(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected — estimated run time roughly {n_selected * 4}–{n_selected * 8} minutes")
+        else:
+            steps_placeholder.info(f"✅ {n_selected} insurers selected across {len(batches)} parallel batches — estimated run time roughly {max(len(b) for b in batches) * 4}–{max(len(b) for b in batches) * 8} minutes")
 
     st.markdown(_DISCLAIMER, unsafe_allow_html=True)
 
