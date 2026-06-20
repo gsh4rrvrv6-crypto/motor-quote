@@ -452,7 +452,7 @@ with tab_help:
     st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Step by Step</div>', unsafe_allow_html=True)
 
     st.markdown("**1.** Select brands you want to quote — lower down on this page")
-    st.markdown('**2.** Open **[claude.ai](https://claude.ai)** in a new window')
+    st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in the same browser window (a new tab is fine)")
 
     # Reserve space for steps 3-7 (filled after grid renders so selection is current)
     steps_placeholder = st.container()
@@ -523,30 +523,44 @@ with tab_help:
                 master_lines.append(f"{m_i}. {ins}: {m_url}{note_str}")
     master_list = "\n".join(master_lines)
 
-    # ── Prompt 1: Prefill (reads docs, fills Vehicle & Drivers tab) ─────────
-    prefill_prompt = f"""I've attached my motor insurance renewal notice and/or certificate of insurance. Using the Claude in Chrome extension, please:
+    # ── Prompt 1: Extract (runs in main chat, reads docs) ──────────────────
+    extract_prompt = """I've attached my motor insurance renewal notice and/or certificate of insurance. Please extract and list these details exactly as shown below — I need to copy your output into another tool:
 
-1. Extract these details from the attached documents:
-   - Vehicle: year, make, model, variant, rego number + state
-   - Cover type, sum insured (Market/Agreed), annual kms
-   - Overnight parking suburb + postcode
-   - Basic excess, current insurer
-   - Main driver: name, DOB (DD/MM/YY), gender
-   - Additional driver (if any): name, DOB, gender
+Vehicle year:
+Vehicle make:
+Vehicle model:
+Vehicle variant:
+Rego number:
+Rego state:
+Cover type:
+Sum insured:
+Annual kms:
+Overnight suburb:
+Overnight postcode:
+Basic excess:
+Current insurer:
+Main driver name:
+Main driver DOB (DD/MM/YY):
+Main driver gender:
+Additional driver name:
+Additional driver DOB (DD/MM/YY):
+Additional driver gender:
 
-2. Open this link: {master_sync_url}
-   Go to the "Vehicle & Drivers" tab and fill in every field using the extracted details.
-   For dropdowns, select the closest matching option. Leave unknown fields blank.
-   The details save automatically — no need to click a save button.
+Fill in each line from the documents. Write "not found" for anything not in the documents."""
 
-3. Let me know when the form is filled and show me a summary of what you entered."""
+    # ── Prompt 2: Action (runs in sidebar, fills app + quotes insurers) ───
+    action_prompt = f"""Using the Claude in Chrome extension, please help me with a car insurance comparison. I'm pasting my vehicle and driver details below (extracted from my documents).
 
-    # ── Prompt 2: Quote (reads filled app, quotes each insurer) ──────────
-    quote_prompt = f"""Using the Claude in Chrome extension, please help me get car insurance quotes. The "Vehicle & Drivers" tab on the Motor Quote Comparison app is already filled with my details — use those details for every insurer.
+PART 1 — FILL THE APP
+Open this link: {master_sync_url}
+Go to the "Vehicle & Drivers" tab and fill in every field using the details I've pasted above.
+For dropdowns, select the closest matching option. Leave unknown fields blank.
+The details save automatically.
 
-For each insurer below, one at a time:
+PART 2 — QUOTE EACH INSURER (one at a time, {m_i} total)
+For each insurer below:
 a) Navigate to their quote website
-b) Fill in the quote form using the details from the app
+b) Fill in the quote form using my details
 c) Address fields: use full format with suburb, state and postcode, select from dropdown
 d) Select Market Value (not Agreed). Modifications: None. At-fault claims: None in last 3 years
 e) If asked to log in, use guest or "Continue without logging in"
@@ -557,25 +571,27 @@ h) If anything blocks you (CAPTCHA, eligibility, error), tell me and we'll decid
 Insurers ({m_i} total, in this order):
 {master_list}
 
+PART 3 — ENTER RESULTS
 After all quotes are done, go to: {master_sync_url}
 Open the "Enter Quotes" tab, paste all results into the "Quick Add" box in this format:
 Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amount> | Ref: <ref> | Inclusions: <list> | Notes: <notes>
 Click "Parse & Add Quotes" and let me know it's done.
 
-Let's start with the first insurer."""
+Let's start with Part 1 — fill the app with my details, then move to Part 2."""
 
     import base64 as _b64
-    _prefill_b64 = _b64.b64encode(prefill_prompt.encode()).decode()
-    _quote_b64 = _b64.b64encode(quote_prompt.encode()).decode()
+    _extract_b64 = _b64.b64encode(extract_prompt.encode()).decode()
+    _action_b64 = _b64.b64encode(action_prompt.encode()).decode()
 
-    steps_placeholder.markdown(f'**3.** Drag and drop your renewal notice and certificate of insurance into the claude chat, then paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> into the same message and press send', unsafe_allow_html=True)
-    steps_placeholder.markdown("**4.** Claude extracts your details and fills the Vehicle & Drivers tab automatically")
-    steps_placeholder.markdown("**5.** Check the Vehicle & Drivers tab in this app — edit anything that's wrong")
+    steps_placeholder.markdown(f'**3.** In the **main claude.ai chat**, drag and drop your renewal notice and certificate of insurance, then paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a> and press send', unsafe_allow_html=True)
+    steps_placeholder.markdown("**4.** Claude lists your details — **copy the entire output**")
+    steps_placeholder.markdown("**5.** Click the **Claude in Chrome extension icon** (top right of browser) to open the sidebar")
     if n_selected > 0:
-        steps_placeholder.markdown(f'**6.** Back in the claude chat, paste the <a href="data:text/plain;base64,{_quote_b64}" download="quote_prompt.txt">quote prompt</a> and press send — Claude will quote {m_i} insurer{"s" if m_i != 1 else ""} one at a time, pausing for your approval before each submit', unsafe_allow_html=True)
+        steps_placeholder.markdown(f'**6.** In the sidebar, paste your copied details, then paste the <a href="data:text/plain;base64,{_action_b64}" download="action_prompt.txt">action prompt</a> below it, and press send', unsafe_allow_html=True)
     else:
-        steps_placeholder.markdown(f'**6.** Back in the claude chat, paste the <a href="data:text/plain;base64,{_quote_b64}" download="quote_prompt.txt">quote prompt</a> and press send *(select brands below first)*', unsafe_allow_html=True)
-    steps_placeholder.markdown("**7.** Results appear in the Compare tab")
+        steps_placeholder.markdown(f'**6.** In the sidebar, paste your copied details, then paste the <a href="data:text/plain;base64,{_action_b64}" download="action_prompt.txt">action prompt</a> below it, and press send *(select brands below first)*', unsafe_allow_html=True)
+    steps_placeholder.markdown('**7.** Claude fills the app, then quotes each insurer — say "submit" when you\'re happy with each one')
+    steps_placeholder.markdown("**8.** Results appear in the Compare tab")
 
 # TAB 1 — Vehicle & Drivers
 # ════════════════════════════════════════════════════════════════════════════
