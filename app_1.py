@@ -434,9 +434,8 @@ with tab_help:
 
     st.markdown('<div class="section-title" style="margin-top:1.5rem">Step by Step</div>', unsafe_allow_html=True)
 
-    st.markdown("**1.** Select brands you want to quote — lower down on this page")
-    st.markdown('**2.** Right click on this tab and select "Add Tab to New Group"')
-    st.markdown("**3.** Open **[claude.ai](https://claude.ai)**")
+    st.markdown('**1.** Right click on this tab and select "Add Tab to New Group"')
+    st.markdown("**2.** Open **[claude.ai](https://claude.ai)**")
 
     # Reserve space for steps 3-7 (filled after grid renders so selection is current)
     steps_placeholder = st.container()
@@ -589,11 +588,13 @@ Fill in each line. Write "not found" for anything missing."""
     _extract_b64 = _b64.b64encode(extract_prompt.encode()).decode()
 
     # ── Steps (Option 1: extract in main chat → sidebar reads chat) ───────
-    steps_placeholder.markdown(f'**4.** In the main claude.ai chat, drag and drop your renewal notice and certificate of insurance, paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a>, and press run', unsafe_allow_html=True)
-    steps_placeholder.markdown("**5.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar — select **Opus** for best results")
+    steps_placeholder.markdown(f'**3.** In the main claude.ai chat, drag and drop your renewal notice and certificate of insurance, paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a>, and press run', unsafe_allow_html=True)
+    steps_placeholder.markdown("**4.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the Claude sidebar")
+    steps_placeholder.caption("⚙️ Select **Sonnet** for best results")
+    steps_placeholder.caption("⚙️ At the bottom of the sidebar panel, change the mode to \"act without asking\" so Claude runs through without stopping for confirmation")
+    steps_placeholder.markdown(f'**5.** In the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> and press run — Claude reads the details from the chat and fills the Vehicle & Drivers tab', unsafe_allow_html=True)
     steps_placeholder.markdown("**6.** Check the **Vehicle & Drivers** tab — edit anything that's wrong")
-    steps_placeholder.markdown(f'**7.** In the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> and press run — Claude reads the details from the chat and fills the Vehicle & Drivers tab', unsafe_allow_html=True)
-    steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
+    steps_placeholder.markdown("**7.** Select the brands you want to quote — lower down on this page")
 
     if len(batches) <= 1:
         if batch_prompts:
@@ -601,6 +602,7 @@ Fill in each line. Write "not found" for anything missing."""
             steps_placeholder.markdown(f'**8.** Back in the sidebar, paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> and press run — Claude reads your details and quotes each insurer', unsafe_allow_html=True)
         else:
             steps_placeholder.markdown("**8.** Back in the sidebar, paste the quote prompt and press run *(select brands below first)*")
+        steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
         steps_placeholder.markdown("**9.** Claude quotes each insurer automatically — just watch")
         steps_placeholder.markdown("**10.** Results appear in the Compare tab")
     else:
@@ -609,6 +611,7 @@ Fill in each line. Write "not found" for anything missing."""
         for bi, (b64, names, count) in enumerate(batch_prompts):
             step_parts.append(f'Window {bi+1}: <a href="data:text/plain;base64,{b64}" download="batch_{bi+1}_prompt.txt">batch {bi+1}</a> ({names})')
         steps_placeholder.markdown("   " + " · ".join(step_parts), unsafe_allow_html=True)
+        steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
         steps_placeholder.markdown(f"**9.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
         steps_placeholder.markdown("**10.** Results appear in the Compare tab")
 
