@@ -451,38 +451,13 @@ with tab_help:
 
     st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Step by Step</div>', unsafe_allow_html=True)
 
-    chrome_prefill_prompt = """I've uploaded my motor insurance renewal notice or insurance slip.
-
-Using the Claude in Chrome extension, please:
-
-1. Extract all the insurance details from my uploaded document
-2. Switch to the Motor Quote Comparison app tab (it should be open in your browser)
-3. Fill in the form fields in the "Vehicle & Drivers" tab using the details from my document
-
-Here are the fields to fill in and where to find them in the document:
-- Year, Make, Model, Variant — from the vehicle description
-- Registration number and state — from the rego details
-- Cover type — Comprehensive / Third Party Fire & Theft / Third Party Only
-- Sum insured — Market Value or Agreed Value
-- Overnight parking suburb and postcode — from the garaging address
-- Basic excess — the standard/basic excess amount in dollars
-- Previous insurer — the name of the insurer on this document
-- Main driver name, date of birth (DD/MM/YY), gender
-- Additional driver name, date of birth (DD/MM/YY), gender (if listed)
-
-For any dropdown fields, select the closest matching option.
-For any fields not found in the document, leave them blank.
-
-If any permission prompts appear from the Chrome extension, select "Always allow".
-
-Once all fields are filled, the details save automatically."""
-
     st.markdown('**1.** Open **[claude.ai](https://claude.ai)** in a new window then right click on the tab and select "Add to new group"')
     st.markdown('**2.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/) (must be in a new window) then right click the tab and select "Add tab to new group" then "Claude"')
-    st.markdown("**3.** In the claude window, drag and drop your renewal notice and certificate of insurance into claude — including both will lead to faster results — and press run")
-    st.markdown("**4.** Click the claude icon at the top right of the window")
-    st.markdown("**5.** Select the cheapest version of claude to save on tokens (minimum Opus 4.8)")
-    st.markdown("**6.** Select brands you want to quote — lower down on this page")
+    st.markdown("**3.** Select the cheapest version of claude to save on tokens (minimum Opus 4.8)")
+    st.markdown("**4.** Select brands you want to quote — lower down on this page")
+
+    # Reserve space for steps 7-9 (filled after grid renders so selection is current)
+    steps_placeholder = st.container()
 
     # ── Insurer selection grid (grouped by underwriter, row-aligned) ──────────
     st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
@@ -552,8 +527,8 @@ Once all fields are filled, the details save automatically."""
 
     master_prompt = f"""Using the Claude in Chrome extension, run this entire car insurance comparison autonomously. Do NOT stop to ask for confirmation. Move fast — skip anything that blocks you within 30 seconds.
 
-STEP 1 — EXTRACT DETAILS FROM MY UPLOADED DOCUMENT
-Extract: year, make, model, variant, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight suburb + postcode, excess, current insurer, driver name/DOB(DD/MM/YY)/gender, any additional driver.
+STEP 1 — EXTRACT DETAILS FROM THE ATTACHED DOCUMENT
+I have attached my renewal notice and/or certificate of insurance to this message. Extract: year, make, model, variant, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight suburb + postcode, excess, current insurer, driver name/DOB(DD/MM/YY)/gender, any additional driver.
 
 STEP 2 — FILL THE APP
 Open: {master_sync_url}
@@ -580,13 +555,13 @@ Click "Parse & Add Quotes". Then report results back in chat."""
     import base64 as _b64
     _master_b64 = _b64.b64encode(master_prompt.encode()).decode()
     if n_selected > 0:
-        st.markdown(f'**7.** Download the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> and paste into your Claude chat on the bottom right then run the prompt by pressing the orange arrow in the panel on the bottom right', unsafe_allow_html=True)
-        st.info(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
+        steps_placeholder.markdown(f'**5.** In the claude window, drag and drop your renewal notice and certificate of insurance — including both will lead to faster results — then download and paste the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> into the same message and press run', unsafe_allow_html=True)
+        steps_placeholder.info(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
     else:
-        st.markdown(f'**7.** Download the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> and paste into your Claude chat on the bottom right then run the prompt by pressing the orange arrow in the panel on the bottom right *(no brands selected yet)*', unsafe_allow_html=True)
+        steps_placeholder.markdown(f'**5.** In the claude window, drag and drop your renewal notice and certificate of insurance — then download and paste the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> into the same message and press run *(no brands selected yet)*', unsafe_allow_html=True)
 
-    st.markdown('**8.** Click "Approve plan"')
-    st.markdown("**9.** Claude does the rest")
+    steps_placeholder.markdown('**6.** Click "Approve plan"')
+    steps_placeholder.markdown("**7.** Claude does the rest")
 
 # TAB 1 — Vehicle & Drivers
 # ════════════════════════════════════════════════════════════════════════════
