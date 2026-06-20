@@ -453,8 +453,7 @@ with tab_help:
 
     st.markdown('**1.** Open **[claude.ai](https://claude.ai)** in a new window then right click on the tab and select "Add to new group"')
     st.markdown('**2.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/) (must be in a new window) then right click the tab and select "Add tab to new group" then "Claude"')
-    st.markdown("**3.** Select the cheapest version of claude to save on tokens (minimum Opus 4.8)")
-    st.markdown("**4.** Select brands you want to quote — lower down on this page")
+    st.markdown("**3.** Select brands you want to quote — lower down on this page")
 
     # Reserve space for steps 7-9 (filled after grid renders so selection is current)
     steps_placeholder = st.container()
@@ -525,43 +524,57 @@ with tab_help:
                 master_lines.append(f"{m_i}. {ins}: {m_url}{note_str}")
     master_list = "\n".join(master_lines)
 
-    master_prompt = f"""Using the Claude in Chrome extension, run this entire car insurance comparison autonomously. Do NOT stop to ask for confirmation. Move fast — skip anything that blocks you within 30 seconds.
+    master_prompt = f"""I'd like your help comparing car insurance quotes using the Claude in Chrome extension. We'll work through this together — you fill in the forms, I confirm before you submit anything.
 
-STEP 1 — EXTRACT DETAILS FROM THE DOCUMENT IN THIS CONVERSATION
-The renewal notice and/or certificate of insurance is attached to this message OR was shared earlier in this conversation. Find it and extract: year, make, model, variant, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight suburb + postcode, excess, current insurer, driver name/DOB(DD/MM/YY)/gender, any additional driver. If you cannot find any document, tell me and stop — do NOT make up details.
+STEP 1 — READ MY DOCUMENTS
+My renewal notice and/or certificate of insurance is attached to this message. Please extract and show me:
+- Vehicle: year, make, model, variant
+- Rego number and state
+- Cover type and sum insured (Market/Agreed)
+- Annual kms, overnight suburb + postcode
+- Basic excess, current insurer
+- Main driver: name, DOB (DD/MM/YY), gender
+- Additional driver (if any): name, DOB, gender
 
-STEP 2 — FILL THE APP
-Open: {master_sync_url}
-Go to "Vehicle & Drivers" tab, fill every field, details auto-save.
+Show me what you've extracted and wait for me to confirm before continuing.
 
-STEP 3 — QUOTE {m_i} INSURERS (in order below)
-RULES (apply to ALL):
-- Permission prompts → "Always allow". Popups (I understand/I agree/Accept/OK/cookies) → click immediately.
-- Address: full format with suburb, state, postcode. Select from dropdown.
-- Market Value (not Agreed). Modifications: None. At-fault claims: None in last 3 years.
-- Login screens → guest/"Continue without logging in". NEVER log in.
-- ANY failure (CAPTCHA/error/eligibility/timeout >30s) → note reason, skip, next insurer immediately.
-- Callback-only sites → submit form, note "callback requested", move on.
+STEP 2 — FILL THE COMPARISON APP
+Once I confirm the details, open this link: {master_sync_url}
+Go to the "Vehicle & Drivers" tab and fill in every field using the confirmed details. Show me a summary of what you've entered and wait for my OK.
 
+STEP 3 — QUOTE EACH INSURER (one at a time, {m_i} total)
+For each insurer below, do this:
+a) Navigate to their website
+b) Fill in the quote form using my details
+c) For address fields, use full format with suburb, state and postcode, select from dropdown
+d) Select Market Value (not Agreed). Modifications: None. At-fault claims: None in last 3 years
+e) If asked to log in, use a guest or "Continue without logging in" option
+f) When the form is fully filled, PAUSE and tell me what you've entered — wait for me to say "submit" before proceeding
+g) After submitting, report the result: annual premium, monthly premium, excess, quote reference, inclusions
+h) If anything blocks you (CAPTCHA, eligibility, error), tell me what happened and we'll decide together whether to skip
+
+Insurers to quote (in this order):
 {master_list}
 
-STEP 4 — DELIVER RESULTS
-Go to: {master_sync_url}
-Open "Enter Quotes" tab. Paste ALL results into the "Quick Add" box using this exact format, one line per insurer:
+STEP 4 — ENTER RESULTS INTO THE APP
+After all insurers are done, go to: {master_sync_url}
+Open the "Enter Quotes" tab and paste the results into the "Quick Add" box in this format:
 Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amount> | Ref: <ref> | Inclusions: <list> | Notes: <notes>
-Failed: Insurer: <name> | Annual: n/a | Notes: <reason>
-Click "Parse & Add Quotes". Then report results back in chat."""
+Click "Parse & Add Quotes" — then let me know it's done.
+
+Let's start with Step 1 — please read my attached documents and show me the extracted details."""
 
     import base64 as _b64
     _master_b64 = _b64.b64encode(master_prompt.encode()).decode()
     if n_selected > 0:
-        steps_placeholder.markdown(f'**5.** In the **main claude.ai chat** (not the extension sidebar), drag and drop your renewal notice and certificate of insurance, then paste the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> into the same message and press send', unsafe_allow_html=True)
-        steps_placeholder.info(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
+        steps_placeholder.markdown(f'**4.** In the **main claude.ai chat**, drag and drop your renewal notice and certificate of insurance, then paste the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> into the same message and press send', unsafe_allow_html=True)
+        steps_placeholder.info(f"⏱️ {m_i} insurer{'s' if m_i != 1 else ''} selected — Claude will fill each form and pause for your approval before submitting")
     else:
-        steps_placeholder.markdown(f'**5.** In the **main claude.ai chat** (not the extension sidebar), drag and drop your renewal notice and certificate of insurance, then paste the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> into the same message and press send *(no brands selected yet)*', unsafe_allow_html=True)
+        steps_placeholder.markdown(f'**4.** In the **main claude.ai chat**, drag and drop your renewal notice and certificate of insurance, then paste the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> into the same message and press send *(select brands below first)*', unsafe_allow_html=True)
 
-    steps_placeholder.markdown('**6.** Click "Approve plan"')
-    steps_placeholder.markdown("**7.** Claude does the rest")
+    steps_placeholder.markdown('**5.** Claude extracts your details — confirm they are correct')
+    steps_placeholder.markdown('**6.** Claude fills each insurer\'s form — say "submit" when you\'re happy with each one')
+    steps_placeholder.markdown("**7.** Results appear in the Compare tab automatically")
 
 # TAB 1 — Vehicle & Drivers
 # ════════════════════════════════════════════════════════════════════════════
