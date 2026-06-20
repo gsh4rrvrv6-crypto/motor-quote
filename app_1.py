@@ -114,7 +114,7 @@ def build_context(v, d):
     """Build the vehicle/driver context string from session state dicts."""
     vehicle_str = f"{v.get('year','')} {v.get('make','')} {v.get('model','')} {v.get('variant','')}".strip()
     usage_str = ", ".join(v.get("usage", [])) if v.get("usage") else "Private"
-    overnight_addr = f"{v.get('overnight_suburb','')} {v.get('overnight_postcode','')}".strip()
+    overnight_addr = f"{v.get('overnight_address','')} {v.get('overnight_suburb','')} {v.get('overnight_postcode','')}".strip()
     day_addr = f"{v.get('day_suburb','')} {v.get('day_postcode','')}".strip()
     d2_block = ""
     if d.get("d2_name"):
@@ -449,16 +449,16 @@ with tab_help:
 """)
 
 
-    st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Step by Step</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">Step by Step</div>', unsafe_allow_html=True)
 
     st.markdown("**1.** Select brands you want to quote — lower down on this page")
-    st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in the same browser window (a new tab is fine)")
+    st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in the same browser window")
 
     # Reserve space for steps 3-7 (filled after grid renders so selection is current)
     steps_placeholder = st.container()
 
     # ── Insurer selection grid (grouped by underwriter, row-aligned) ──────────
-    st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">Select Your Insurers</div>', unsafe_allow_html=True)
 
     insurer_groups_ordered = [
         ("Suncorp Group", ["GIO", "AAMI", "Suncorp", "APIA", "Bingle"]),
@@ -506,25 +506,28 @@ with tab_help:
 
     st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
 
-    # ── Master prompt (always visible, built from current selection) ──────────
+    # ── Prompts (always visible, built from current selection) ──────────────
     n_selected = len(st.session_state.selected_insurers)
 
     master_app_url = _detect_app_url()
     master_sync_url = (f"{master_app_url}/?sync={st.session_state.sync_code}"
-                       if master_app_url else "the Motor Quote Comparison app tab (keep it open in this browser)")
+                       if master_app_url else "the Motor Quote Comparison app tab")
 
-    master_lines = []
-    m_i = 0
-    for ins in all_selectable_insurers:
-        if ins in st.session_state.selected_insurers and ins in INSURER_INFO:
-                m_i += 1
-                m_url, m_note = INSURER_INFO[ins]
-                note_str = f" — {m_note}" if m_note else ""
-                master_lines.append(f"{m_i}. {ins}: {m_url}{note_str}")
-    master_list = "\n".join(master_lines)
+    # Build ordered insurer list and split into parallel batches of 3
+    ordered_selected = []
+    for platform, members in PLATFORMS.items():
+        for m in members:
+            if m in st.session_state.selected_insurers and m not in ordered_selected:
+                ordered_selected.append(m)
+    for s in st.session_state.selected_insurers:
+        if s not in ordered_selected:
+            ordered_selected.append(s)
 
-    # ── Prompt 1: Extract (runs in main chat, reads docs) ──────────────────
-    extract_prompt = """I've attached my motor insurance renewal notice and/or certificate of insurance. Please extract and list these details exactly as shown below — I need to copy your output into another tool:
+    batch_size = 3
+    batches = [ordered_selected[i:i+batch_size] for i in range(0, len(ordered_selected), batch_size)]
+
+    # ── Extract prompt (main chat — reads docs, outputs details) ─────────
+    extract_prompt = """I've attached my motor insurance renewal notice and/or certificate of insurance. Extract and list these details exactly as shown — I'll copy your output into another tool:
 
 Vehicle year:
 Vehicle make:
@@ -535,6 +538,7 @@ Rego state:
 Cover type:
 Sum insured:
 Annual kms:
+Overnight street address:
 Overnight suburb:
 Overnight postcode:
 Basic excess:
@@ -546,52 +550,58 @@ Additional driver name:
 Additional driver DOB (DD/MM/YY):
 Additional driver gender:
 
-Fill in each line from the documents. Write "not found" for anything not in the documents."""
+Fill in each line. Write "not found" for anything missing."""
 
-    # ── Prompt 2: Action (runs in sidebar, fills app + quotes insurers) ───
-    action_prompt = f"""Using the Claude in Chrome extension, please help me with a car insurance comparison. I'm pasting my vehicle and driver details below (extracted from my documents).
-
-PART 1 — FILL THE APP
-Open this link: {master_sync_url}
-Go to the "Vehicle & Drivers" tab and fill in every field using the details I've pasted above.
-For dropdowns, select the closest matching option. Leave unknown fields blank.
-The details save automatically.
-
-PART 2 — QUOTE EACH INSURER (one at a time, {m_i} total)
-For each insurer below:
-a) Navigate to their quote website
-b) Fill in the quote form using my details
-c) Address fields: use full format with suburb, state and postcode, select from dropdown
-d) Select Market Value (not Agreed). Modifications: None. At-fault claims: None in last 3 years
-e) If asked to log in, use guest or "Continue without logging in"
-f) When the form is fully filled, PAUSE and tell me what you've entered — wait for me to say "submit"
-g) After submitting, report: annual premium, monthly premium, excess, quote reference, inclusions
-h) If anything blocks you (CAPTCHA, eligibility, error), tell me and we'll decide together
-
-Insurers ({m_i} total, in this order):
-{master_list}
-
-PART 3 — ENTER RESULTS
-After all quotes are done, go to: {master_sync_url}
-Open the "Enter Quotes" tab, paste all results into the "Quick Add" box in this format:
-Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amount> | Ref: <ref> | Inclusions: <list> | Notes: <notes>
-Click "Parse & Add Quotes" and let me know it's done.
-
-Let's start with Part 1 — fill the app with my details, then move to Part 2."""
-
+    # ── Batch action prompts (sidebar — quotes insurers directly) ────────
     import base64 as _b64
     _extract_b64 = _b64.b64encode(extract_prompt.encode()).decode()
-    _action_b64 = _b64.b64encode(action_prompt.encode()).decode()
 
-    steps_placeholder.markdown(f'**3.** In the **main claude.ai chat**, drag and drop your renewal notice and certificate of insurance, then paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a> and press send', unsafe_allow_html=True)
-    steps_placeholder.markdown("**4.** Claude lists your details — **copy the entire output**")
-    steps_placeholder.markdown("**5.** Click the **Claude in Chrome extension icon** (top right of browser) to open the sidebar")
-    if n_selected > 0:
-        steps_placeholder.markdown(f'**6.** In the sidebar, paste your copied details, then paste the <a href="data:text/plain;base64,{_action_b64}" download="action_prompt.txt">action prompt</a> below it, and press send', unsafe_allow_html=True)
+    batch_prompts = []
+    for batch_idx, batch in enumerate(batches):
+        batch_lines = []
+        for i, ins in enumerate(batch, 1):
+            if ins in INSURER_INFO:
+                url, note = INSURER_INFO[ins]
+                note_str = f" — {note}" if note else ""
+                batch_lines.append(f"{i}. {ins}: {url}{note_str}")
+        batch_list = "\n".join(batch_lines)
+
+        bp = f"""My vehicle and driver details are pasted above. Using the Claude in Chrome extension, quote these insurers — go straight through without pausing.
+
+Rules: Address = full street, suburb, state, postcode — select from dropdown. Market Value. Modifications: None. Claims: None in 3 years. Guest/no login. If blocked, note reason, skip, next.
+
+{batch_list}
+
+After all done, go to: {master_sync_url}
+"Enter Quotes" tab → paste into "Quick Add" box:
+Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amount> | Ref: <ref> | Inclusions: <list> | Notes: <notes>
+Click "Parse & Add Quotes". Go."""
+        batch_prompts.append((_b64.b64encode(bp.encode()).decode(), ", ".join(batch), len(batch)))
+
+    # ── Steps ────────────────────────────────────────────────────────────
+    steps_placeholder.markdown(f'**3.** In the **main claude.ai chat**, drag and drop your documents, then paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a> and press <span style="display:inline-flex;align-items:center;justify-content:center;background:#b5651d;color:white;border-radius:50%;width:22px;height:22px;font-size:13px;vertical-align:middle">▶</span>', unsafe_allow_html=True)
+    steps_placeholder.markdown("**4.** Claude lists your details — **select all and copy**")
+
+    if len(batches) <= 1:
+        # Single batch — one sidebar session
+        if batch_prompts:
+            b64, names, count = batch_prompts[0]
+            steps_placeholder.markdown("**5.** Click the **Claude in Chrome extension icon** to open the sidebar — select **Sonnet** for speed")
+            steps_placeholder.markdown(f'**6.** Paste your copied details, then paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> below it, and press send', unsafe_allow_html=True)
+        else:
+            steps_placeholder.markdown("**5.** Click the **Claude in Chrome extension icon** to open the sidebar")
+            steps_placeholder.markdown("**6.** Paste your copied details and the quote prompt *(select brands below first)*")
+        steps_placeholder.markdown("**7.** Claude quotes each insurer automatically — just watch")
+        steps_placeholder.markdown("**8.** Results appear in the Compare tab")
     else:
-        steps_placeholder.markdown(f'**6.** In the sidebar, paste your copied details, then paste the <a href="data:text/plain;base64,{_action_b64}" download="action_prompt.txt">action prompt</a> below it, and press send *(select brands below first)*', unsafe_allow_html=True)
-    steps_placeholder.markdown('**7.** Claude fills the app, then quotes each insurer — say "submit" when you\'re happy with each one')
-    steps_placeholder.markdown("**8.** Results appear in the Compare tab")
+        # Multiple batches — parallel sidebar sessions
+        steps_placeholder.markdown(f"**5.** Open **{len(batches)} browser windows** side by side (Cmd+N / Ctrl+N) — each gets its own sidebar session")
+        step_6_parts = []
+        for bi, (b64, names, count) in enumerate(batch_prompts):
+            step_6_parts.append(f'Window {bi+1}: <a href="data:text/plain;base64,{b64}" download="batch_{bi+1}_prompt.txt">batch {bi+1}</a> ({names})')
+        steps_placeholder.markdown(f'**6.** In each window\'s sidebar (select **Sonnet**), paste your copied details + the batch prompt: ' + " · ".join(step_6_parts), unsafe_allow_html=True)
+        steps_placeholder.markdown(f"**7.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
+        steps_placeholder.markdown("**8.** Results appear in the Compare tab")
 
 # TAB 1 — Vehicle & Drivers
 # ════════════════════════════════════════════════════════════════════════════
@@ -629,6 +639,7 @@ with tab1:
     st.markdown('<div class="section-title" style="margin-top:1.5rem">Parking & Usage</div>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
+        overnight_address = st.text_input("Overnight Street Address", value=st.session_state.vehicle.get("overnight_address", ""))
         overnight_suburb = st.text_input("Overnight Parking Suburb", value=st.session_state.vehicle.get("overnight_suburb", ""))
         overnight_postcode = st.text_input("Overnight Postcode", value=st.session_state.vehicle.get("overnight_postcode", ""))
     with col2:
@@ -692,7 +703,7 @@ with tab1:
         "year": year, "make": make, "model": model, "variant": variant,
         "rego": rego, "rego_state": rego_state, "cover_type": cover_type,
         "sum_insured": sum_insured, "annual_kms": annual_kms,
-        "overnight_suburb": overnight_suburb, "overnight_postcode": overnight_postcode,
+        "overnight_address": overnight_address, "overnight_suburb": overnight_suburb, "overnight_postcode": overnight_postcode,
         "day_suburb": day_suburb, "day_postcode": day_postcode,
         "usage": usage, "finance": finance,
         "start_date": start_date, "previous_insurer": previous_insurer,
