@@ -589,11 +589,11 @@ Fill in each line. Write "not found" for anything missing."""
     _extract_b64 = _b64.b64encode(extract_prompt.encode()).decode()
 
     # ── Steps (Option 1: extract in main chat → sidebar reads chat) ───────
-    steps_placeholder.markdown(f'**4.** In the main claude.ai chat, drag and drop your renewal notice and certificate of insurance, paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a>, and press run — Claude lists your details in the chat', unsafe_allow_html=True)
-    steps_placeholder.markdown("**5.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar — select **Sonnet** for speed and if this is not working try **Opus**")
+    steps_placeholder.markdown(f'**4.** In the main claude.ai chat, drag and drop your renewal notice and certificate of insurance, paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a>, and press run', unsafe_allow_html=True)
+    steps_placeholder.markdown("**5.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar — select **Opus** for best results")
+    steps_placeholder.markdown("**6.** Check the **Vehicle & Drivers** tab — edit anything that's wrong")
+    steps_placeholder.markdown(f'**7.** In the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> and press run — Claude reads the details from the chat and fills the Vehicle & Drivers tab', unsafe_allow_html=True)
     steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
-    steps_placeholder.markdown(f'**6.** In the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> and press run — Claude reads the details from the chat and fills the Vehicle & Drivers tab', unsafe_allow_html=True)
-    steps_placeholder.markdown("**7.** Check the **Vehicle & Drivers** tab — edit anything that's wrong")
 
     if len(batches) <= 1:
         if batch_prompts:
