@@ -483,7 +483,9 @@ Once all fields are filled, the details save automatically."""
     st.markdown("**4.** Click the claude icon at the top right of the window")
     st.markdown("**5.** Select the cheapest version of claude to save on tokens (minimum Opus 4.8)")
     st.markdown("**6.** Select brands you want to quote — lower down on this page")
-    n_selected = len(st.session_state.selected_insurers)
+
+    # ── Insurer selection grid (grouped by underwriter, row-aligned) ──────────
+    st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
 
     insurer_groups_ordered = [
         ("Suncorp Group", ["GIO", "AAMI", "Suncorp", "APIA", "Bingle"]),
@@ -501,62 +503,6 @@ Once all fields are filled, the details save automatically."""
     all_selectable_insurers = []
     for _, members in insurer_groups_ordered:
         all_selectable_insurers.extend(members)
-
-    if n_selected > 0:
-
-        master_app_url = _detect_app_url()
-        master_sync_url = (f"{master_app_url}/?sync={st.session_state.sync_code}"
-                           if master_app_url else "the Motor Quote Comparison app tab (keep it open in this browser)")
-
-        master_lines = []
-        m_i = 0
-        for ins in all_selectable_insurers:
-            if ins in st.session_state.selected_insurers and ins in INSURER_INFO:
-                    m_i += 1
-                    m_url, m_note = INSURER_INFO[ins]
-                    note_str = f" — {m_note}" if m_note else ""
-                    master_lines.append(f"{m_i}. {ins}: {m_url}{note_str}")
-        master_list = "\n".join(master_lines)
-
-        master_prompt = f"""Using the Claude in Chrome extension, run this entire car insurance comparison autonomously. Do NOT stop to ask for confirmation. Move fast — skip anything that blocks you within 30 seconds.
-
-STEP 1 — EXTRACT DETAILS FROM MY UPLOADED DOCUMENT
-Extract: year, make, model, variant, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight suburb + postcode, excess, current insurer, driver name/DOB(DD/MM/YY)/gender, any additional driver.
-
-STEP 2 — FILL THE APP
-Open: {master_sync_url}
-Go to "Vehicle & Drivers" tab, fill every field, details auto-save.
-
-STEP 3 — QUOTE {m_i} INSURERS (in order below)
-RULES (apply to ALL):
-- Permission prompts → "Always allow". Popups (I understand/I agree/Accept/OK/cookies) → click immediately.
-- Address: full format with suburb, state, postcode. Select from dropdown.
-- Market Value (not Agreed). Modifications: None. At-fault claims: None in last 3 years.
-- Login screens → guest/"Continue without logging in". NEVER log in.
-- ANY failure (CAPTCHA/error/eligibility/timeout >30s) → note reason, skip, next insurer immediately.
-- Callback-only sites → submit form, note "callback requested", move on.
-
-{master_list}
-
-STEP 4 — DELIVER RESULTS
-Go to: {master_sync_url}
-Open "Enter Quotes" tab. Paste ALL results into the "Quick Add" box using this exact format, one line per insurer:
-Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amount> | Ref: <ref> | Inclusions: <list> | Notes: <notes>
-Failed: Insurer: <name> | Annual: n/a | Notes: <reason>
-Click "Parse & Add Quotes". Then report results back in chat."""
-
-        import base64 as _b64
-        _master_b64 = _b64.b64encode(master_prompt.encode()).decode()
-        st.markdown(f'**7.** Download the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> and paste into your Claude chat on the bottom right then run the prompt by pressing the orange arrow in the panel on the bottom right', unsafe_allow_html=True)
-        st.info(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
-    else:
-        st.markdown("**7.** Download the master prompt and paste into your Claude chat on the bottom right then run the prompt by pressing the orange arrow *(select at least one brand above to generate the prompt)*")
-
-    st.markdown('**8.** Click "Approve plan"')
-    st.markdown("**9.** Claude does the rest")
-
-    # ── Insurer selection grid (grouped by underwriter, row-aligned) ──────────
-    st.markdown('<div class="section-title" style="margin-top:1.5rem">🏢 Select Your Insurers</div>', unsafe_allow_html=True)
 
     n_cols = 7
     for group_name, group_insurers in insurer_groups_ordered:
@@ -586,6 +532,61 @@ Click "Parse & Add Quotes". Then report results back in chat."""
                         pass
 
     st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
+
+    # ── Master prompt (always visible, built from current selection) ──────────
+    n_selected = len(st.session_state.selected_insurers)
+
+    master_app_url = _detect_app_url()
+    master_sync_url = (f"{master_app_url}/?sync={st.session_state.sync_code}"
+                       if master_app_url else "the Motor Quote Comparison app tab (keep it open in this browser)")
+
+    master_lines = []
+    m_i = 0
+    for ins in all_selectable_insurers:
+        if ins in st.session_state.selected_insurers and ins in INSURER_INFO:
+                m_i += 1
+                m_url, m_note = INSURER_INFO[ins]
+                note_str = f" — {m_note}" if m_note else ""
+                master_lines.append(f"{m_i}. {ins}: {m_url}{note_str}")
+    master_list = "\n".join(master_lines)
+
+    master_prompt = f"""Using the Claude in Chrome extension, run this entire car insurance comparison autonomously. Do NOT stop to ask for confirmation. Move fast — skip anything that blocks you within 30 seconds.
+
+STEP 1 — EXTRACT DETAILS FROM MY UPLOADED DOCUMENT
+Extract: year, make, model, variant, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight suburb + postcode, excess, current insurer, driver name/DOB(DD/MM/YY)/gender, any additional driver.
+
+STEP 2 — FILL THE APP
+Open: {master_sync_url}
+Go to "Vehicle & Drivers" tab, fill every field, details auto-save.
+
+STEP 3 — QUOTE {m_i} INSURERS (in order below)
+RULES (apply to ALL):
+- Permission prompts → "Always allow". Popups (I understand/I agree/Accept/OK/cookies) → click immediately.
+- Address: full format with suburb, state, postcode. Select from dropdown.
+- Market Value (not Agreed). Modifications: None. At-fault claims: None in last 3 years.
+- Login screens → guest/"Continue without logging in". NEVER log in.
+- ANY failure (CAPTCHA/error/eligibility/timeout >30s) → note reason, skip, next insurer immediately.
+- Callback-only sites → submit form, note "callback requested", move on.
+
+{master_list}
+
+STEP 4 — DELIVER RESULTS
+Go to: {master_sync_url}
+Open "Enter Quotes" tab. Paste ALL results into the "Quick Add" box using this exact format, one line per insurer:
+Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amount> | Ref: <ref> | Inclusions: <list> | Notes: <notes>
+Failed: Insurer: <name> | Annual: n/a | Notes: <reason>
+Click "Parse & Add Quotes". Then report results back in chat."""
+
+    import base64 as _b64
+    _master_b64 = _b64.b64encode(master_prompt.encode()).decode()
+    if n_selected > 0:
+        st.markdown(f'**7.** Download the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> and paste into your Claude chat on the bottom right then run the prompt by pressing the orange arrow in the panel on the bottom right', unsafe_allow_html=True)
+        st.info(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
+    else:
+        st.markdown(f'**7.** Download the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> and paste into your Claude chat on the bottom right then run the prompt by pressing the orange arrow in the panel on the bottom right *(no brands selected yet)*', unsafe_allow_html=True)
+
+    st.markdown('**8.** Click "Approve plan"')
+    st.markdown("**9.** Claude does the rest")
 
 # TAB 1 — Vehicle & Drivers
 # ════════════════════════════════════════════════════════════════════════════
