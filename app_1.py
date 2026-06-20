@@ -451,9 +451,9 @@ with tab_help:
 
     st.markdown('<div class="section-title" style="margin-top:1.5rem">📄 Step by Step</div>', unsafe_allow_html=True)
 
-    st.markdown('**1.** Open **[claude.ai](https://claude.ai)** in a new window then right click on the tab and select "Add to new group"')
-    st.markdown('**2.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/) (must be in a new window) then right click the tab and select "Add tab to new group" then "Claude"')
-    st.markdown("**3.** Select brands you want to quote — lower down on this page")
+    st.markdown("**1.** Select brands you want to quote — lower down on this page")
+    st.markdown('**2.** Open **[claude.ai](https://claude.ai)** in a new window then right click on the tab and select "Add to new group"')
+    st.markdown('**3.** Open this website: [motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app](https://motor-quote-8vivwekyyxaanhoxzdecd3.streamlit.app/) (must be in a new window) then right click the tab and select "Add tab to new group" then "Claude"')
 
     # Reserve space for steps 7-9 (filled after grid renders so selection is current)
     steps_placeholder = st.container()
