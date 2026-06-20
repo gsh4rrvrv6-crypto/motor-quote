@@ -228,7 +228,7 @@ st.markdown("""
     [data-testid="stVerticalBlockBorderWrapper"] { padding:0 !important; }
     [data-testid="stColumn"] [data-testid="element-container"] { margin:0 !important; padding:0 !important; }
     /* Group title spacing — closer to tiles below */
-    .group-label { font-size:1.44rem; color:#999; margin-top:14px; margin-bottom:-4px; padding:0; line-height:1; font-weight:700; }
+    .group-label { font-size:1.44rem; color:#999; margin-top:14px; margin-bottom:8px; padding:0; line-height:1; font-weight:700; }
     /* Force all columns to align content to top */
     [data-testid="stHorizontalBlock"] { align-items:flex-start !important; }
     [data-testid="stColumn"] { vertical-align:top !important; }
@@ -239,6 +239,8 @@ st.markdown("""
     .main .block-container { padding-bottom:0 !important; }
     footer { display:none !important; }
     #MainMenu { display:none !important; }
+    header [data-testid="stToolbar"] { display:none !important; }
+    [data-testid="stStatusWidget"] { display:none !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -403,45 +405,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── Session save / restore (top bar) ─────────────────────────────────────────
-session_data = {
-    "vehicle": st.session_state.vehicle,
-    "drivers": st.session_state.drivers,
-    "quotes": st.session_state.quotes,
-    "selected_insurers": sorted(st.session_state.selected_insurers),
-}
-col_save, col_restore_file, col_restore_btn = st.columns([1, 1, 1])
-with col_save:
-    st.download_button(
-        "💾 Save",
-        data=json.dumps(session_data, indent=2, default=str),
-        file_name=f"motor_quotes_{date.today().strftime('%d%m%y')}.json",
-        mime="application/json",
-        width="stretch",
-    )
-with col_restore_file:
-    restore_file = st.file_uploader("Restore", type=["json"], key="restore_upload", label_visibility="collapsed")
-with col_restore_btn:
-    if restore_file is not None and st.button("↩️ Restore", width="stretch"):
-        try:
-            data = json.loads(restore_file.read().decode("utf-8"))
-            st.session_state.vehicle = data.get("vehicle", {})
-            st.session_state.drivers = data.get("drivers", {})
-            st.session_state.quotes = data.get("quotes", [])
-            restored_sel = set(data.get("selected_insurers", []))
-            st.session_state.selected_insurers = restored_sel
-            for k in list(st.session_state.keys()):
-                if k.startswith("sel_"):
-                    st.session_state[k] = k[4:] in restored_sel
-            for ins in restored_sel:
-                st.session_state[f"sel_{ins}"] = True
-            st.session_state.imported_fps = {quote_fp(q) for q in st.session_state.quotes}
-            st.rerun()
-        except Exception as e:
-            st.error(f"Couldn't read that file: {e}")
-
 # ── Header ────────────────────────────────────────────────────────────────────
 st.markdown('<div class="main-header">🚗 Motor Quote Comparison</div>', unsafe_allow_html=True)
+
+_DISCLAIMER = '<div style="font-size:0.7rem;color:#aaa;margin-top:2rem;padding-top:0.5rem;border-top:1px solid #eee">⚠️ This tool is for comparison purposes only and does not constitute financial advice. Always read the Product Disclosure Statement (PDS) before making a decision. Consider seeking independent financial advice.</div>'
 
 tab_help, tab1, tab2, tab3 = st.tabs(["📖 Instructions", "📋 Vehicle & Drivers", "📝 Enter Quotes", "📊 Compare"])
 
@@ -595,10 +562,10 @@ Click "Parse & Add Quotes". Go."""
         if batch_prompts:
             b64, names, count = batch_prompts[0]
             steps_placeholder.markdown("**6.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar which drives chrome — select **Sonnet** for speed")
-            steps_placeholder.markdown(f'**7.** Paste your copied details, then paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> below it, and press send', unsafe_allow_html=True)
+            steps_placeholder.markdown(f'**7.** Paste your copied details from step 5, then paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> below it, and press send', unsafe_allow_html=True)
         else:
             steps_placeholder.markdown("**6.** Click the **Claude in Chrome extension icon** to open the sidebar")
-            steps_placeholder.markdown("**7.** Paste your copied details and the quote prompt *(select brands below first)*")
+            steps_placeholder.markdown("**7.** Paste your copied details from step 5 and the quote prompt *(select brands below first)*")
         steps_placeholder.markdown("**8.** Claude quotes each insurer automatically — just watch")
         steps_placeholder.markdown("**9.** Results appear in the Compare tab")
     else:
@@ -607,9 +574,11 @@ Click "Parse & Add Quotes". Go."""
         step_6_parts = []
         for bi, (b64, names, count) in enumerate(batch_prompts):
             step_6_parts.append(f'Window {bi+1}: <a href="data:text/plain;base64,{b64}" download="batch_{bi+1}_prompt.txt">batch {bi+1}</a> ({names})')
-        steps_placeholder.markdown(f'**7.** In each window\'s sidebar (select **Sonnet**), paste your copied details + the batch prompt: ' + " · ".join(step_6_parts), unsafe_allow_html=True)
+        steps_placeholder.markdown(f'**7.** In each window\'s sidebar (select **Sonnet**), paste your copied details from step 5 + the batch prompt: ' + " · ".join(step_6_parts), unsafe_allow_html=True)
         steps_placeholder.markdown(f"**8.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
         steps_placeholder.markdown("**9.** Results appear in the Compare tab")
+
+    st.markdown(_DISCLAIMER, unsafe_allow_html=True)
 
 # TAB 1 — Vehicle & Drivers
 # ════════════════════════════════════════════════════════════════════════════
@@ -724,6 +693,7 @@ with tab1:
         "d2_licence": d2_licence, "d2_claims": d2_claims,
     }
     st.caption("💾 Details are saved automatically")
+    st.markdown(_DISCLAIMER, unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 2 — Add Quotes
@@ -846,6 +816,8 @@ with tab2:
                 if st.button("🗑", key=f"del_{i}", help="Remove this quote"):
                     st.session_state.quotes.pop(i)
                     st.rerun()
+
+    st.markdown(_DISCLAIMER, unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 3 — Compare
@@ -999,3 +971,4 @@ Figures shown are complaints received in FY2024-25 at underwriter group level. F
         df = pd.DataFrame(table_data)
         st.dataframe(df, width="stretch", hide_index=True)
 
+    st.markdown(_DISCLAIMER, unsafe_allow_html=True)
