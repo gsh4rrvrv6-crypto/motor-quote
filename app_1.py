@@ -527,8 +527,8 @@ with tab_help:
 
     master_prompt = f"""Using the Claude in Chrome extension, run this entire car insurance comparison autonomously. Do NOT stop to ask for confirmation. Move fast — skip anything that blocks you within 30 seconds.
 
-STEP 1 — EXTRACT DETAILS FROM THE ATTACHED DOCUMENT
-I have attached my renewal notice and/or certificate of insurance to this message. Extract: year, make, model, variant, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight suburb + postcode, excess, current insurer, driver name/DOB(DD/MM/YY)/gender, any additional driver.
+STEP 1 — EXTRACT DETAILS FROM THE DOCUMENT IN THIS CONVERSATION
+The renewal notice and/or certificate of insurance is attached to this message OR was shared earlier in this conversation. Find it and extract: year, make, model, variant, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight suburb + postcode, excess, current insurer, driver name/DOB(DD/MM/YY)/gender, any additional driver. If you cannot find any document, tell me and stop — do NOT make up details.
 
 STEP 2 — FILL THE APP
 Open: {master_sync_url}
@@ -555,10 +555,10 @@ Click "Parse & Add Quotes". Then report results back in chat."""
     import base64 as _b64
     _master_b64 = _b64.b64encode(master_prompt.encode()).decode()
     if n_selected > 0:
-        steps_placeholder.markdown(f'**5.** In the claude window, drag and drop your renewal notice and certificate of insurance — including both will lead to faster results — then download and paste the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> into the same message and press run', unsafe_allow_html=True)
+        steps_placeholder.markdown(f'**5.** In the **main claude.ai chat** (not the extension sidebar), drag and drop your renewal notice and certificate of insurance, then paste the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> into the same message and press send', unsafe_allow_html=True)
         steps_placeholder.info(f"⏱️ Estimated run time for {m_i} insurer{'s' if m_i != 1 else ''}: roughly {m_i * 4}–{m_i * 8} minutes, fully unattended.")
     else:
-        steps_placeholder.markdown(f'**5.** In the claude window, drag and drop your renewal notice and certificate of insurance — then download and paste the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> into the same message and press run *(no brands selected yet)*', unsafe_allow_html=True)
+        steps_placeholder.markdown(f'**5.** In the **main claude.ai chat** (not the extension sidebar), drag and drop your renewal notice and certificate of insurance, then paste the <a href="data:text/plain;base64,{_master_b64}" download="master_prompt.txt">master prompt</a> into the same message and press send *(no brands selected yet)*', unsafe_allow_html=True)
 
     steps_placeholder.markdown('**6.** Click "Approve plan"')
     steps_placeholder.markdown("**7.** Claude does the rest")
