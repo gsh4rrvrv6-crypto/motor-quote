@@ -534,14 +534,12 @@ with tab_help:
    - Main driver: name, DOB (DD/MM/YY), gender
    - Additional driver (if any): name, DOB, gender
 
-2. Show me what you've extracted and wait for me to confirm the details are correct.
-
-3. Once I confirm, open this link: {master_sync_url}
-   Go to the "Vehicle & Drivers" tab and fill in every field using the confirmed details.
+2. Open this link: {master_sync_url}
+   Go to the "Vehicle & Drivers" tab and fill in every field using the extracted details.
    For dropdowns, select the closest matching option. Leave unknown fields blank.
    The details save automatically — no need to click a save button.
 
-4. Let me know when the form is filled so I can check it."""
+3. Let me know when the form is filled and show me a summary of what you entered."""
 
     # ── Prompt 2: Quote (reads filled app, quotes each insurer) ──────────
     quote_prompt = f"""Using the Claude in Chrome extension, please help me get car insurance quotes. The "Vehicle & Drivers" tab on the Motor Quote Comparison app is already filled with my details — use those details for every insurer.
@@ -571,7 +569,7 @@ Let's start with the first insurer."""
     _quote_b64 = _b64.b64encode(quote_prompt.encode()).decode()
 
     steps_placeholder.markdown(f'**3.** Drag and drop your renewal notice and certificate of insurance into the claude chat, then paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> into the same message and press send', unsafe_allow_html=True)
-    steps_placeholder.markdown("**4.** Claude extracts your details — confirm they are correct, then Claude fills the Vehicle & Drivers tab")
+    steps_placeholder.markdown("**4.** Claude extracts your details and fills the Vehicle & Drivers tab automatically")
     steps_placeholder.markdown("**5.** Check the Vehicle & Drivers tab in this app — edit anything that's wrong")
     if n_selected > 0:
         steps_placeholder.markdown(f'**6.** Back in the claude chat, paste the <a href="data:text/plain;base64,{_quote_b64}" download="quote_prompt.txt">quote prompt</a> and press send — Claude will quote {m_i} insurer{"s" if m_i != 1 else ""} one at a time, pausing for your approval before each submit', unsafe_allow_html=True)
