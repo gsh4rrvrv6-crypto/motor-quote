@@ -217,18 +217,19 @@ st.markdown("""
     .brand-label { font-size:0.65rem; color:#888; font-weight:400; margin-top:2px; }
     /* Make checkbox fill entire card area — whole tile is the button */
     [data-testid="stCheckbox"] { margin-bottom:-48px; position:relative; z-index:10; opacity:0; height:40px !important; min-height:40px !important; max-height:40px !important; overflow:hidden; }
-    [data-testid="stCheckbox"] label { cursor:pointer; height:40px !important; width:100% !important; display:block !important; position:relative; }
+    [data-testid="stCheckbox"] label { cursor:pointer; height:40px !important; width:100% !important; display:block !important; position:absolute; top:0; left:0; right:0; bottom:0; }
     [data-testid="stCheckbox"] label span { font-size:0 !important; line-height:0 !important; width:100% !important; display:block !important; height:100% !important; }
     [data-testid="stCheckbox"] label svg { display:none !important; }
     [data-testid="stCheckbox"] label > div:first-child { display:none !important; }
     [data-testid="stCheckbox"] label > div { width:100% !important; height:100% !important; }
+    [data-testid="stCheckbox"] > div { width:100% !important; height:100% !important; }
     /* Force every column element to uniform size */
     [data-testid="stColumn"] > div { padding-top:0 !important; }
     [data-testid="stColumn"] [data-testid="stCheckbox"] + div { margin-top:0 !important; padding-top:0 !important; }
     [data-testid="stVerticalBlockBorderWrapper"] { padding:0 !important; }
     [data-testid="stColumn"] [data-testid="element-container"] { margin:0 !important; padding:0 !important; }
     /* Group title spacing — closer to tiles below */
-    .group-label { font-size:1.44rem; color:#999; margin-top:14px; margin-bottom:8px; padding:0; line-height:1; font-weight:700; }
+    .group-label { font-size:1.44rem; color:#999; margin-top:28px; margin-bottom:8px; padding:0; line-height:1; font-weight:700; }
     /* Force all columns to align content to top */
     [data-testid="stHorizontalBlock"] { align-items:flex-start !important; }
     [data-testid="stColumn"] { vertical-align:top !important; }
@@ -408,7 +409,7 @@ st.markdown("""
 # ── Header ────────────────────────────────────────────────────────────────────
 st.markdown('<div class="main-header">🚗 Motor Quote Comparison</div>', unsafe_allow_html=True)
 
-_DISCLAIMER = '<div style="font-size:0.7rem;color:#aaa;margin-top:2rem;padding-top:0.5rem;border-top:1px solid #eee">⚠️ This tool is for comparison purposes only and does not constitute financial advice. Always read the Product Disclosure Statement (PDS) before making a decision. Consider seeking independent financial advice.</div>'
+_DISCLAIMER = '<div style="font-size:0.7rem;color:#aaa;margin-top:2rem;padding-top:0.5rem">⚠️ This tool is for comparison purposes only and does not constitute financial advice. Always read the Product Disclosure Statement (PDS) before making a decision. Consider seeking independent financial advice.</div>'
 
 tab_help, tab1, tab2, tab3 = st.tabs(["📖 Instructions", "📋 Vehicle & Drivers", "📝 Enter Quotes", "📊 Compare"])
 
@@ -418,7 +419,7 @@ tab_help, tab1, tab2, tab3 = st.tabs(["📖 Instructions", "📋 Vehicle & Drive
 with tab_help:
     st.markdown('<div class="section-title" style="margin-top:1.5rem">What You Need</div>', unsafe_allow_html=True)
     st.markdown("""
-- A **Claude account** — sign up free at [claude.ai](https://claude.ai)
+- A **paid Claude account** — sign up at [claude.ai](https://claude.ai)
 - The **[Claude in Chrome extension](https://chromewebstore.google.com/detail/claude-ai/ppmhkbzfgnlphjgaaomgfnkknhijaggh)** — this is what lets Claude fill in forms in your browser
 """)
 
@@ -427,7 +428,7 @@ with tab_help:
 
     st.markdown("**1.** Select brands you want to quote — lower down on this page")
     st.markdown('**2.** Right click on this tab and select "Add Tab to New Group"')
-    st.markdown("**3.** Open **[claude.ai](https://claude.ai)** in the same browser window")
+    st.markdown("**3.** Open **[claude.ai](https://claude.ai)**")
 
     # Reserve space for steps 3-7 (filled after grid renders so selection is current)
     steps_placeholder = st.container()
