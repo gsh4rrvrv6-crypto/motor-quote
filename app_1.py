@@ -238,10 +238,18 @@ st.markdown("""
     [data-testid="stTabPanel"] > div { padding-bottom:0 !important; }
     [data-testid="stVerticalBlock"] { gap:0.5rem !important; }
     .main .block-container { padding-bottom:0 !important; }
+    /* Remove horizontal lines above footer */
+    [data-testid="stTabPanel"] hr { display:none !important; }
     footer { display:none !important; }
+    footer hr { display:none !important; }
+    footer::before { display:none !important; }
+    [data-testid="stBottom"] { display:none !important; }
+    [data-testid="stBottomBlockContainer"] { display:none !important; }
     #MainMenu { display:none !important; }
     header [data-testid="stToolbar"] { display:none !important; }
     [data-testid="stStatusWidget"] { display:none !important; }
+    [data-testid="manage-app-button"] { display:none !important; }
+    .stAppDeployButton { display:none !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -480,6 +488,7 @@ with tab_help:
                     else:
                         pass
 
+    st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
     st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
 
     # ── Prompts (always visible, built from current selection) ──────────────
@@ -502,7 +511,33 @@ with tab_help:
     batch_size = 3
     batches = [ordered_selected[i:i+batch_size] for i in range(0, len(ordered_selected), batch_size)]
 
-    # ── Extract prompt (main chat — reads docs, outputs details) ─────────
+    # ── Build details block from saved Vehicle & Drivers data ────────────
+    v = st.session_state.vehicle
+    d = st.session_state.drivers
+    has_details = bool(v.get("make"))
+
+    details_block = f"""Vehicle year: {v.get('year','')}
+Vehicle make: {v.get('make','')}
+Vehicle model: {v.get('model','')}
+Vehicle variant: {v.get('variant','')}
+Rego number: {v.get('rego','')}
+Rego state: {v.get('rego_state','')}
+Cover type: {v.get('cover_type','')}
+Sum insured: {v.get('sum_insured','')}
+Annual kms: {v.get('annual_kms','')}
+Overnight street address: {v.get('overnight_address','')}
+Overnight suburb: {v.get('overnight_suburb','')}
+Overnight postcode: {v.get('overnight_postcode','')}
+Basic excess: {v.get('excess','')}
+Current insurer: {v.get('previous_insurer','')}
+Main driver name: {d.get('d1_name','')}
+Main driver DOB: {d.get('d1_dob','')}
+Main driver gender: {d.get('d1_gender','')}
+Additional driver name: {d.get('d2_name','')}
+Additional driver DOB: {d.get('d2_dob','')}
+Additional driver gender: {d.get('d2_gender','')}""" if has_details else ""
+
+    # ── Extract prompt (only needed first time) ──────────────────────────
     extract_prompt = """I've attached my motor insurance renewal notice and/or certificate of insurance. Extract and list these details exactly as shown — I'll copy your output into another tool:
 
 Vehicle year:
@@ -528,7 +563,7 @@ Additional driver gender:
 
 Fill in each line. Write "not found" for anything missing."""
 
-    # ── Batch action prompts (sidebar — quotes insurers directly) ────────
+    # ── Combined prompts (details + quote instructions in one block) ─────
     import base64 as _b64
     _extract_b64 = _b64.b64encode(extract_prompt.encode()).decode()
 
@@ -542,42 +577,52 @@ Fill in each line. Write "not found" for anything missing."""
                 batch_lines.append(f"{i}. {ins}: {url}{note_str}")
         batch_list = "\n".join(batch_lines)
 
-        bp = f"""My vehicle and driver details are pasted above. Using the Claude in Chrome extension, quote these insurers — go straight through without pausing.
+        bp = f"""Using the Claude in Chrome extension, get car insurance quotes for me.
 
-Rules: Address = full street, suburb, state, postcode — select from dropdown. Market Value. Modifications: None. Claims: None in 3 years. Guest/no login. If blocked, note reason, skip, next.
+STEP 1 — READ MY DETAILS FROM THE APP
+Go to: {master_sync_url}
+Click the "Vehicle & Drivers" tab. Read ALL the form field values (year, make, model, variant, rego, state, cover type, sum insured, annual kms, overnight address/suburb/postcode, daytime suburb/postcode, usage, excess, start date, previous insurer, driver names/DOBs/genders). These are my details — use them for every insurer quote below.
+
+STEP 2 — QUOTE INSURERS (go straight through without pausing)
+IMPORTANT: Open each insurer's website in a NEW TAB. Do NOT navigate away from the Motor Quote Comparison app tab — keep it open separately throughout.
+
+Rules: If any Chrome extension permission prompts appear, click "Always allow this site". Address = full street, suburb, state, postcode — select from dropdown. Market Value. Modifications: None. Claims: None in 3 years. Guest/no login. If blocked, note reason, skip, next.
 
 {batch_list}
 
-After all done, go to: {master_sync_url}
+STEP 3 — ENTER RESULTS
+After all done, go back to: {master_sync_url}
 "Enter Quotes" tab → paste into "Quick Add" box:
 Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amount> | Ref: <ref> | Inclusions: <list> | Notes: <notes>
 Click "Parse & Add Quotes". Go."""
         batch_prompts.append((_b64.b64encode(bp.encode()).decode(), ", ".join(batch), len(batch)))
 
     # ── Steps ────────────────────────────────────────────────────────────
-    steps_placeholder.markdown(f'**4.** In the **main claude.ai chat**, drag and drop your documents, then paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a> and press run', unsafe_allow_html=True)
-    steps_placeholder.markdown("**5.** Claude lists your details — **select all and copy**")
-
-    if len(batches) <= 1:
-        # Single batch — one sidebar session
-        if batch_prompts:
-            b64, names, count = batch_prompts[0]
-            steps_placeholder.markdown("**6.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar which drives chrome — select **Sonnet** for speed")
-            steps_placeholder.markdown(f'**7.** Paste your copied details from step 5, then paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> below it, and press send', unsafe_allow_html=True)
+    if has_details:
+        # Details already saved — sidebar reads from app, no copy-paste
+        steps_placeholder.markdown("**4.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar — select **Sonnet** for speed and if this is not working try **Opus**")
+        steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
+        if len(batches) <= 1:
+            if batch_prompts:
+                b64, names, count = batch_prompts[0]
+                steps_placeholder.markdown(f'**5.** Paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> into the sidebar and press run — Claude reads your details from the Vehicle & Drivers tab automatically', unsafe_allow_html=True)
+            else:
+                steps_placeholder.markdown("**5.** Paste the quote prompt into the sidebar *(select brands below first)*")
+            steps_placeholder.markdown("**6.** Claude quotes each insurer automatically — just watch")
+            steps_placeholder.markdown("**7.** Results appear in the Compare tab")
         else:
-            steps_placeholder.markdown("**6.** Click the **Claude in Chrome extension icon** to open the sidebar")
-            steps_placeholder.markdown("**7.** Paste your copied details from step 5 and the quote prompt *(select brands below first)*")
-        steps_placeholder.markdown("**8.** Claude quotes each insurer automatically — just watch")
-        steps_placeholder.markdown("**9.** Results appear in the Compare tab")
+            steps_placeholder.markdown(f"**5.** Open **{len(batches)} browser windows** side by side (Cmd+N / Ctrl+N)")
+            step_parts = []
+            for bi, (b64, names, count) in enumerate(batch_prompts):
+                step_parts.append(f'Window {bi+1}: <a href="data:text/plain;base64,{b64}" download="batch_{bi+1}_prompt.txt">batch {bi+1}</a> ({names})')
+            steps_placeholder.markdown(f'**6.** In each window\'s sidebar (select **Sonnet**, or **Opus** if not working), paste the batch prompt — Claude reads your details from the app automatically: ' + " · ".join(step_parts), unsafe_allow_html=True)
+            steps_placeholder.markdown(f"**7.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
+            steps_placeholder.markdown("**8.** Results appear in the Compare tab")
     else:
-        # Multiple batches — parallel sidebar sessions
-        steps_placeholder.markdown(f"**6.** Open **{len(batches)} browser windows** side by side (Cmd+N / Ctrl+N) — each gets its own sidebar session")
-        step_6_parts = []
-        for bi, (b64, names, count) in enumerate(batch_prompts):
-            step_6_parts.append(f'Window {bi+1}: <a href="data:text/plain;base64,{b64}" download="batch_{bi+1}_prompt.txt">batch {bi+1}</a> ({names})')
-        steps_placeholder.markdown(f'**7.** In each window\'s sidebar (select **Sonnet**), paste your copied details from step 5 + the batch prompt: ' + " · ".join(step_6_parts), unsafe_allow_html=True)
-        steps_placeholder.markdown(f"**8.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
-        steps_placeholder.markdown("**9.** Results appear in the Compare tab")
+        # No details yet — need to fill V&D first
+        steps_placeholder.markdown(f'**4.** In Claude, drag and drop your documents, then paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a> and press run', unsafe_allow_html=True)
+        steps_placeholder.markdown("**5.** Claude lists your details — fill them into the **Vehicle & Drivers** tab")
+        steps_placeholder.markdown("**6.** Come back here — the steps will simplify once your details are saved")
 
     st.markdown(_DISCLAIMER, unsafe_allow_html=True)
 
@@ -854,7 +899,6 @@ with tab3:
         col3.metric("Highest Premium", f"${max(prices):,.2f}")
         col4.metric("Max Saving", f"${saving:,.2f}")
 
-        st.markdown("---")
         st.markdown('<div class="section-title">Quote Breakdown</div>', unsafe_allow_html=True)
         st.caption("Each quote shows the underwriter — the insurance company that actually holds the risk and pays your claims. Brands sharing an underwriter are often variations of the same policy under different branding.")
 
