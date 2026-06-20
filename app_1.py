@@ -518,7 +518,7 @@ with tab_help:
     prefill_prompt = f"""Using the Claude in Chrome extension, fill in my vehicle and driver details.
 
 STEP 1 — GET MY DETAILS FROM THE CLAUDE CHAT
-My vehicle and driver details have already been extracted and are listed in the main Claude chat conversation open in this same browser window (the regular claude.ai tab, not this sidebar). Read them from there. The details include: vehicle year, make, model, variant, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight street address + suburb + postcode, basic excess, current insurer, main driver name/DOB(DD/MM/YY)/gender, and any additional driver. If you can't find them in the chat, tell me and stop — do not guess.
+My vehicle and driver details have already been extracted and are listed in the main Claude chat conversation open in this same browser window (the regular claude.ai tab, not this sidebar). Read them from there. The details include: vehicle year, make, model, variant, colour, years owned, odometer reading, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight street address + suburb + postcode, basic excess, current insurer, main driver name/DOB(DD/MM/YY)/gender, and any additional driver. If you can't find them in the chat, tell me and stop — do not guess.
 
 STEP 2 — FILL THE APP
 Go to: {master_sync_url}
@@ -544,12 +544,12 @@ When done, tell me the tab is filled so I can check it, then run the quote promp
 
 STEP 1 — READ MY DETAILS FROM THE APP
 Go to: {master_sync_url}
-Click the "Vehicle & Drivers" tab. Read ALL the form field values (year, make, model, variant, rego, state, cover type, sum insured, annual kms, overnight address/suburb/postcode, daytime suburb/postcode, usage, excess, start date, previous insurer, driver names/DOBs/genders). These are my details — use them for every insurer quote below.
+Click the "Vehicle & Drivers" tab. Read ALL the form field values (year, make, model, variant, colour, years owned, odometer, rego, state, cover type, sum insured, annual kms, overnight address/suburb/postcode, daytime suburb/postcode, usage, excess, start date, previous insurer, driver names/DOBs/genders). These are my details — use them for every insurer quote below.
 
 STEP 2 — QUOTE INSURERS (go straight through without pausing)
 IMPORTANT: Open each insurer's website in a NEW TAB. Do NOT navigate away from the Motor Quote Comparison app tab — keep it open separately throughout.
 
-Rules: If any Chrome extension permission prompts appear, click "Always allow this site". Address = full street, suburb, state, postcode — select from dropdown. Market Value. Modifications: None. Claims: None in 3 years. Guest/no login. If blocked, note reason, skip, next.
+Rules: If any Chrome extension permission prompts appear, click "Always allow this site". Address = full street, suburb, state, postcode — select from dropdown. Market Value. Modifications: None. Claims: None in 3 years. Guest/no login. ALWAYS select the ANNUAL payment option (not monthly) so the premium is the total yearly cost. If blocked, note reason, skip, next.
 
 {batch_list}
 
@@ -567,6 +567,9 @@ Vehicle year:
 Vehicle make:
 Vehicle model:
 Vehicle variant:
+Vehicle colour:
+Years owned:
+Odometer reading (km):
 Rego number:
 Rego state:
 Cover type:
@@ -577,6 +580,8 @@ Overnight suburb:
 Overnight postcode:
 Basic excess:
 Current insurer:
+Current renewal premium (annual $):
+Current renewal excess:
 Main driver name:
 Main driver DOB (DD/MM/YY):
 Main driver gender:
@@ -634,6 +639,7 @@ with tab1:
                                value=st.session_state.vehicle.get("year", 2020), step=1)
         make = st.text_input("Make", value=st.session_state.vehicle.get("make", ""))
         model = st.text_input("Model", value=st.session_state.vehicle.get("model", ""))
+        colour = st.text_input("Colour", value=st.session_state.vehicle.get("colour", ""))
     with col2:
         variant = st.text_input("Variant / Series", value=st.session_state.vehicle.get("variant", ""))
         rego = st.text_input("Registration Number", value=st.session_state.vehicle.get("rego", ""))
@@ -641,6 +647,8 @@ with tab1:
                                   ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"],
                                   index=["NSW","VIC","QLD","WA","SA","TAS","ACT","NT"].index(
                                       st.session_state.vehicle.get("rego_state", "NSW")))
+        ownership_years = st.number_input("Years Owned", min_value=0, max_value=50,
+                                          value=st.session_state.vehicle.get("ownership_years", 0), step=1)
     with col3:
         cover_type = st.selectbox("Cover Type",
                                   ["Comprehensive", "Third Party Fire & Theft", "Third Party Only"],
@@ -655,6 +663,8 @@ with tab1:
                                   index=["Under 10,000","10,000 – 15,000","15,000 – 20,000",
                                          "20,000 – 25,000","Over 25,000"].index(
                                       st.session_state.vehicle.get("annual_kms", "15,000 – 20,000")))
+        odometer = st.number_input("Odometer Reading (km)", min_value=0, max_value=1000000,
+                                   value=st.session_state.vehicle.get("odometer", 0), step=1000)
 
     st.markdown('<div class="section-title" style="margin-top:1.5rem">Parking & Usage</div>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
@@ -673,14 +683,21 @@ with tab1:
                                index=["No","Yes"].index(st.session_state.vehicle.get("finance", "No")))
 
     st.markdown('<div class="section-title" style="margin-top:1.5rem">Policy Details</div>', unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         start_date = st.text_input("Policy Start Date (DD/MM/YY)",
                                    value=st.session_state.vehicle.get("start_date", today_str()))
-        previous_insurer = st.text_input("Previous Insurer", value=st.session_state.vehicle.get("previous_insurer", ""))
+        previous_insurer = st.text_input("Current / Previous Insurer", value=st.session_state.vehicle.get("previous_insurer", ""))
     with col2:
         excess = st.number_input("Basic Excess ($)", min_value=0, max_value=5000,
                                  value=st.session_state.vehicle.get("excess", 500), step=50)
+        renewal_premium = st.number_input("Current Renewal Premium ($/yr)", min_value=0, max_value=20000,
+                                          value=st.session_state.vehicle.get("renewal_premium", 0), step=10,
+                                          help="The annual premium on your renewal notice — shown as a baseline to compare new quotes against")
+    with col3:
+        renewal_excess = st.number_input("Current Renewal Excess ($)", min_value=0, max_value=5000,
+                                         value=st.session_state.vehicle.get("renewal_excess", 0), step=50,
+                                         help="The excess on your current renewal notice")
 
     st.markdown('<div class="section-title" style="margin-top:1.5rem">Drivers</div>', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
@@ -721,13 +738,15 @@ with tab1:
     # Auto-save vehicle and driver details
     st.session_state.vehicle = {
         "year": year, "make": make, "model": model, "variant": variant,
+        "colour": colour, "ownership_years": ownership_years, "odometer": odometer,
         "rego": rego, "rego_state": rego_state, "cover_type": cover_type,
         "sum_insured": sum_insured, "annual_kms": annual_kms,
         "overnight_address": overnight_address, "overnight_suburb": overnight_suburb, "overnight_postcode": overnight_postcode,
         "day_suburb": day_suburb, "day_postcode": day_postcode,
         "usage": usage, "finance": finance,
         "start_date": start_date, "previous_insurer": previous_insurer,
-        "excess": excess
+        "excess": excess,
+        "renewal_premium": renewal_premium, "renewal_excess": renewal_excess
     }
     st.session_state.drivers = {
         "d1_name": d1_name, "d1_dob": d1_dob, "d1_gender": d1_gender,
@@ -889,12 +908,37 @@ with tab3:
             )
 
         prices = [q["annual_premium"] for q in quotes]
-        saving = max(prices) - min(prices)
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Quotes Compared", len(quotes))
-        col2.metric("Lowest Premium", f"${min(prices):,.2f}")
-        col3.metric("Highest Premium", f"${max(prices):,.2f}")
-        col4.metric("Max Saving", f"${saving:,.2f}")
+        renewal_premium = v.get("renewal_premium", 0) if v else 0
+        renewal_excess = v.get("renewal_excess", 0) if v else 0
+        renewal_insurer = v.get("previous_insurer", "") if v else ""
+
+        if renewal_premium and renewal_premium > 0:
+            # Renewal is the baseline — saving = renewal minus cheapest new quote
+            saving = renewal_premium - min(prices)
+            renewal_label = renewal_insurer or "Current renewal"
+            st.markdown(
+                f"<div style='background:#fff7ed;border:1px solid #fdba74;border-radius:10px;"
+                f"padding:0.8rem 1.2rem;margin-bottom:1.2rem;font-size:0.9rem;color:#333'>"
+                f"🔄 <strong>Your current renewal — {renewal_label}:</strong> "
+                f"${renewal_premium:,.2f}/year"
+                + (f" &nbsp;·&nbsp; Excess ${renewal_excess:,}" if renewal_excess else "")
+                + "</div>",
+                unsafe_allow_html=True
+            )
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Quotes Compared", len(quotes))
+            col2.metric("Current Renewal", f"${renewal_premium:,.2f}")
+            col3.metric("Cheapest Quote", f"${min(prices):,.2f}")
+            col4.metric("Saving vs Renewal", f"${saving:,.2f}",
+                        delta=f"-{(saving/renewal_premium*100):.0f}%" if saving > 0 else None,
+                        delta_color="normal")
+        else:
+            saving = max(prices) - min(prices)
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Quotes Compared", len(quotes))
+            col2.metric("Lowest Premium", f"${min(prices):,.2f}")
+            col3.metric("Highest Premium", f"${max(prices):,.2f}")
+            col4.metric("Max Saving", f"${saving:,.2f}")
 
         st.markdown('<div class="section-title">Quote Breakdown</div>', unsafe_allow_html=True)
         st.caption("Each quote shows the underwriter — the insurance company that actually holds the risk and pays your claims. Brands sharing an underwriter are often variations of the same policy under different branding.")
@@ -990,6 +1034,20 @@ Figures shown are complaints received in FY2024-25 at underwriter group level. F
         st.markdown('<div class="section-title" style="margin-top:2rem">Full Comparison Table</div>', unsafe_allow_html=True)
 
         table_data = []
+        if renewal_premium and renewal_premium > 0:
+            table_data.append({
+                "Insurer": f"🔄 {renewal_insurer or 'Current renewal'} (your renewal)",
+                "Underwriter": UNDERWRITERS.get(renewal_insurer, "—"),
+                "AFCA FY25": AFCA_COMPLAINTS.get(UNDERWRITERS.get(renewal_insurer, ""), "—"),
+                "Annual ($)": f"${renewal_premium:,.2f}",
+                "Monthly ($)": "—",
+                "Excess ($)": f"${renewal_excess:,}" if renewal_excess else "—",
+                "Sum Insured": "—",
+                "Inclusions": "—",
+                "Quote Ref": "—",
+                "Valid Until": "—",
+                "⚠ Checks": "current policy",
+            })
         for q in sorted_quotes:
             inclusions = []
             if q["roadside"]: inclusions.append("Roadside")
@@ -998,7 +1056,6 @@ Figures shown are complaints received in FY2024-25 at underwriter group level. F
             table_data.append({
                 "Insurer": q["insurer"],
                 "Underwriter": UNDERWRITERS.get(q["insurer"], "—"),
-                "Rating": f'{q.get("rating")}/5' if q.get("rating") else "—",
                 "AFCA FY25": AFCA_COMPLAINTS.get(UNDERWRITERS.get(q["insurer"], ""), "—"),
                 "Annual ($)": f"${q['annual_premium']:,.2f}",
                 "Monthly ($)": f"${q['monthly_premium']:,.2f}" if q["monthly_premium"] > 0 else "—",
