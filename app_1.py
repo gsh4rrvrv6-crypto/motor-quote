@@ -232,6 +232,13 @@ st.markdown("""
     /* Force all columns to align content to top */
     [data-testid="stHorizontalBlock"] { align-items:flex-start !important; }
     [data-testid="stColumn"] { vertical-align:top !important; }
+    /* Remove extra bottom space in tabs */
+    [data-testid="stTabPanel"] { padding-bottom:0 !important; }
+    [data-testid="stTabPanel"] > div { padding-bottom:0 !important; }
+    [data-testid="stVerticalBlock"] { gap:0.5rem !important; }
+    .main .block-container { padding-bottom:0 !important; }
+    footer { display:none !important; }
+    #MainMenu { display:none !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -452,7 +459,8 @@ with tab_help:
     st.markdown('<div class="section-title" style="margin-top:1.5rem">Step by Step</div>', unsafe_allow_html=True)
 
     st.markdown("**1.** Select brands you want to quote — lower down on this page")
-    st.markdown("**2.** Open **[claude.ai](https://claude.ai)** in the same browser window")
+    st.markdown('**2.** Right click on this tab and select "Add Tab to New Group"')
+    st.markdown("**3.** Open **[claude.ai](https://claude.ai)** in the same browser window")
 
     # Reserve space for steps 3-7 (filled after grid renders so selection is current)
     steps_placeholder = st.container()
@@ -579,29 +587,29 @@ Click "Parse & Add Quotes". Go."""
         batch_prompts.append((_b64.b64encode(bp.encode()).decode(), ", ".join(batch), len(batch)))
 
     # ── Steps ────────────────────────────────────────────────────────────
-    steps_placeholder.markdown(f'**3.** In the **main claude.ai chat**, drag and drop your documents, then paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a> and press <span style="display:inline-flex;align-items:center;justify-content:center;background:#b5651d;color:white;border-radius:50%;width:22px;height:22px;font-size:13px;vertical-align:middle">▶</span>', unsafe_allow_html=True)
-    steps_placeholder.markdown("**4.** Claude lists your details — **select all and copy**")
+    steps_placeholder.markdown(f'**4.** In the **main claude.ai chat**, drag and drop your documents, then paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a> and press run', unsafe_allow_html=True)
+    steps_placeholder.markdown("**5.** Claude lists your details — **select all and copy**")
 
     if len(batches) <= 1:
         # Single batch — one sidebar session
         if batch_prompts:
             b64, names, count = batch_prompts[0]
-            steps_placeholder.markdown("**5.** Click the **Claude in Chrome extension icon** to open the sidebar — select **Sonnet** for speed")
-            steps_placeholder.markdown(f'**6.** Paste your copied details, then paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> below it, and press send', unsafe_allow_html=True)
+            steps_placeholder.markdown("**6.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar which drives chrome — select **Sonnet** for speed")
+            steps_placeholder.markdown(f'**7.** Paste your copied details, then paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> below it, and press send', unsafe_allow_html=True)
         else:
-            steps_placeholder.markdown("**5.** Click the **Claude in Chrome extension icon** to open the sidebar")
-            steps_placeholder.markdown("**6.** Paste your copied details and the quote prompt *(select brands below first)*")
-        steps_placeholder.markdown("**7.** Claude quotes each insurer automatically — just watch")
-        steps_placeholder.markdown("**8.** Results appear in the Compare tab")
+            steps_placeholder.markdown("**6.** Click the **Claude in Chrome extension icon** to open the sidebar")
+            steps_placeholder.markdown("**7.** Paste your copied details and the quote prompt *(select brands below first)*")
+        steps_placeholder.markdown("**8.** Claude quotes each insurer automatically — just watch")
+        steps_placeholder.markdown("**9.** Results appear in the Compare tab")
     else:
         # Multiple batches — parallel sidebar sessions
-        steps_placeholder.markdown(f"**5.** Open **{len(batches)} browser windows** side by side (Cmd+N / Ctrl+N) — each gets its own sidebar session")
+        steps_placeholder.markdown(f"**6.** Open **{len(batches)} browser windows** side by side (Cmd+N / Ctrl+N) — each gets its own sidebar session")
         step_6_parts = []
         for bi, (b64, names, count) in enumerate(batch_prompts):
             step_6_parts.append(f'Window {bi+1}: <a href="data:text/plain;base64,{b64}" download="batch_{bi+1}_prompt.txt">batch {bi+1}</a> ({names})')
-        steps_placeholder.markdown(f'**6.** In each window\'s sidebar (select **Sonnet**), paste your copied details + the batch prompt: ' + " · ".join(step_6_parts), unsafe_allow_html=True)
-        steps_placeholder.markdown(f"**7.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
-        steps_placeholder.markdown("**8.** Results appear in the Compare tab")
+        steps_placeholder.markdown(f'**7.** In each window\'s sidebar (select **Sonnet**), paste your copied details + the batch prompt: ' + " · ".join(step_6_parts), unsafe_allow_html=True)
+        steps_placeholder.markdown(f"**8.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
+        steps_placeholder.markdown("**9.** Results appear in the Compare tab")
 
 # TAB 1 — Vehicle & Drivers
 # ════════════════════════════════════════════════════════════════════════════
