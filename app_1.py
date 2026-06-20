@@ -595,8 +595,8 @@ Fill in each line. Write "not found" for anything missing."""
     # ── Steps (Option 1: extract in main chat → sidebar reads chat) ───────
     steps_placeholder.markdown(f'**3.** In the main claude.ai chat, drag and drop your renewal notice and certificate of insurance, paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a>, and press run', unsafe_allow_html=True)
     steps_placeholder.markdown("**4.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the Claude sidebar")
-    steps_placeholder.caption("⚙️ Select **Sonnet** for best results")
-    steps_placeholder.caption("⚙️ At the bottom of the sidebar panel, change the mode to \"act without asking\" so Claude runs through without stopping for confirmation")
+    steps_placeholder.caption("⚙️ At the top of the sidebar panel, select versions of Sonnet for best results")
+    steps_placeholder.caption("⚙️ At the bottom of the sidebar panel, select \"act without asking\" so Claude runs through without stopping for confirmation")
     steps_placeholder.markdown(f'**5.** In the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> and press run — Claude reads the details from the chat and fills the Vehicle & Drivers tab', unsafe_allow_html=True)
     steps_placeholder.markdown("**6.** Check the **Vehicle & Drivers** tab — edit anything that's wrong")
     steps_placeholder.markdown("**7.** Select the brands you want to quote — lower down on this page")
