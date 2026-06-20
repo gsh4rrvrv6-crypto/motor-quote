@@ -518,12 +518,12 @@ with tab_help:
     # ── Prefill prompt (sidebar — reads docs, fills Vehicle & Drivers tab) ─
     prefill_prompt = f"""Using the Claude in Chrome extension, fill in my vehicle and driver details.
 
-STEP 1 — READ MY DOCUMENTS
-My renewal notice and/or certificate of insurance is open in a tab (or I've shared it with you). Extract: vehicle year, make, model, variant, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight street address + suburb + postcode, basic excess, current insurer, main driver name/DOB(DD/MM/YY)/gender, and any additional driver.
+STEP 1 — GET MY DETAILS FROM THE CLAUDE CHAT
+My vehicle and driver details have already been extracted and are listed in the main Claude chat conversation open in this same browser window (the regular claude.ai tab, not this sidebar). Read them from there. The details include: vehicle year, make, model, variant, rego number + state, cover type, sum insured (Market/Agreed), annual kms, overnight street address + suburb + postcode, basic excess, current insurer, main driver name/DOB(DD/MM/YY)/gender, and any additional driver. If you can't find them in the chat, tell me and stop — do not guess.
 
 STEP 2 — FILL THE APP
 Go to: {master_sync_url}
-Click the "Vehicle & Drivers" tab. Type each extracted detail into the matching field. For dropdowns, pick the closest option. Leave anything you can't find blank. The details save automatically.
+Click the "Vehicle & Drivers" tab. Type each detail into the matching field. For dropdowns, pick the closest option. Leave anything missing blank. The details save automatically.
 
 When done, tell me the tab is filled so I can check it, then run the quote prompt."""
 
@@ -561,28 +561,56 @@ Insurer: <name> | Annual: $<amount> | Monthly: $<amount or n/a> | Excess: $<amou
 Click "Parse & Add Quotes". Go."""
         batch_prompts.append((_b64.b64encode(bp.encode()).decode(), ", ".join(batch), len(batch)))
 
-    # ── Steps (always show full flow) ─────────────────────────────────────
-    steps_placeholder.markdown(f'**4.** Drag and drop your renewal notice and certificate of insurance into the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a>, and press run — Claude fills the Vehicle & Drivers tab for you', unsafe_allow_html=True)
-    steps_placeholder.markdown("**5.** Check the **Vehicle & Drivers** tab — edit anything that's wrong")
-    steps_placeholder.markdown("**6.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar — select **Sonnet** for speed and if this is not working try **Opus**")
+    # ── Extract prompt (main chat — reads docs, lists details) ───────────
+    extract_prompt = """I've attached my motor insurance renewal notice and/or certificate of insurance. Read them and list these details exactly as shown below so they're available for the next step:
+
+Vehicle year:
+Vehicle make:
+Vehicle model:
+Vehicle variant:
+Rego number:
+Rego state:
+Cover type:
+Sum insured:
+Annual kms:
+Overnight street address:
+Overnight suburb:
+Overnight postcode:
+Basic excess:
+Current insurer:
+Main driver name:
+Main driver DOB (DD/MM/YY):
+Main driver gender:
+Additional driver name:
+Additional driver DOB (DD/MM/YY):
+Additional driver gender:
+
+Fill in each line. Write "not found" for anything missing."""
+    _extract_b64 = _b64.b64encode(extract_prompt.encode()).decode()
+
+    # ── Steps (Option 1: extract in main chat → sidebar reads chat) ───────
+    steps_placeholder.markdown(f'**4.** In the main claude.ai chat, drag and drop your renewal notice and certificate of insurance, paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a>, and press run — Claude lists your details in the chat', unsafe_allow_html=True)
+    steps_placeholder.markdown("**5.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the claude sidebar — select **Sonnet** for speed and if this is not working try **Opus**")
     steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
+    steps_placeholder.markdown(f'**6.** In the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> and press run — Claude reads the details from the chat and fills the Vehicle & Drivers tab', unsafe_allow_html=True)
+    steps_placeholder.markdown("**7.** Check the **Vehicle & Drivers** tab — edit anything that's wrong")
 
     if len(batches) <= 1:
         if batch_prompts:
             b64, names, count = batch_prompts[0]
-            steps_placeholder.markdown(f'**7.** Back in the sidebar, paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> and press run — Claude reads your details and quotes each insurer', unsafe_allow_html=True)
+            steps_placeholder.markdown(f'**8.** Back in the sidebar, paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> and press run — Claude reads your details and quotes each insurer', unsafe_allow_html=True)
         else:
-            steps_placeholder.markdown("**7.** Back in the sidebar, paste the quote prompt and press run *(select brands below first)*")
-        steps_placeholder.markdown("**8.** Claude quotes each insurer automatically — just watch")
-        steps_placeholder.markdown("**9.** Results appear in the Compare tab")
+            steps_placeholder.markdown("**8.** Back in the sidebar, paste the quote prompt and press run *(select brands below first)*")
+        steps_placeholder.markdown("**9.** Claude quotes each insurer automatically — just watch")
+        steps_placeholder.markdown("**10.** Results appear in the Compare tab")
     else:
-        steps_placeholder.markdown(f"**7.** Open **{len(batches)} browser windows** side by side (Cmd+N / Ctrl+N) and paste a different batch prompt into each sidebar:")
+        steps_placeholder.markdown(f"**8.** Open **{len(batches)} browser windows** side by side (Cmd+N / Ctrl+N) and paste a different batch prompt into each sidebar:")
         step_parts = []
         for bi, (b64, names, count) in enumerate(batch_prompts):
             step_parts.append(f'Window {bi+1}: <a href="data:text/plain;base64,{b64}" download="batch_{bi+1}_prompt.txt">batch {bi+1}</a> ({names})')
         steps_placeholder.markdown("   " + " · ".join(step_parts), unsafe_allow_html=True)
-        steps_placeholder.markdown(f"**8.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
-        steps_placeholder.markdown("**9.** Results appear in the Compare tab")
+        steps_placeholder.markdown(f"**9.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
+        steps_placeholder.markdown("**10.** Results appear in the Compare tab")
 
     if n_selected > 0:
         if len(batches) <= 1:
