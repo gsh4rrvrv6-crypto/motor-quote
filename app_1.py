@@ -460,7 +460,7 @@ with col_restore_btn:
 # ── Header ────────────────────────────────────────────────────────────────────
 st.markdown('<div class="main-header">🚗 Motor Quote Comparison</div>', unsafe_allow_html=True)
 
-_DISCLAIMER = '<div style="font-size:0.7rem;color:#aaa;margin-top:2rem;padding-top:0.5rem">⚠️ This tool is for comparison purposes only and does not constitute financial advice. Always read the Product Disclosure Statement (PDS) before making a decision. Consider seeking independent financial advice.</div>'
+_DISCLAIMER = '<div style="font-size:0.7rem;color:#aaa;margin-top:2rem;padding-top:0.5rem">⚠️ This tool is for comparison purposes only and does not constitute financial advice. Always read the Product Disclosure Statement (PDS) before making a decision. Consider seeking independent financial advice.</div><div style="height:2.5rem"></div>'
 
 tab_help, tab1, tab2, tab3 = st.tabs(["📖 Instructions", "📋 Vehicle & Drivers", "📝 Enter Quotes", "📊 Compare"])
 
@@ -646,20 +646,20 @@ Fill in each line. Write "not found" for anything missing."""
     _extract_b64 = _b64.b64encode(extract_prompt.encode()).decode()
 
     # ── Steps (Option 1: extract in main chat → sidebar reads chat) ───────
-    steps_placeholder.markdown(f'**3.** In the main claude.ai chat, drag and drop your renewal notice and certificate of insurance, paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a>, and press run', unsafe_allow_html=True)
+    steps_placeholder.markdown(f'**3.** IDrag and drop your renewal notice and certificate of insurance, paste the <a href="data:text/plain;base64,{_extract_b64}" download="extract_prompt.txt">extract prompt</a>, and press run', unsafe_allow_html=True)
     steps_placeholder.markdown("**4.** Click the **Claude in Chrome extension icon** at the top right of the screen to open the Claude sidebar")
-    steps_placeholder.caption("⚙️ At the top of the sidebar panel, select versions of Sonnet for best results")
-    steps_placeholder.caption("⚙️ At the bottom of the sidebar panel, select \"act without asking\" so Claude runs through without stopping for confirmation")
+    steps_placeholder.markdown("<div style='margin-left:1.8rem;font-size:0.82rem;color:#888'>⚙️ At the top of the sidebar panel, select versions of Sonnet for best results</div>", unsafe_allow_html=True)
+    steps_placeholder.markdown("<div style='margin-left:1.8rem;font-size:0.82rem;color:#888'>⚙️ At the bottom of the sidebar panel, select \"act without asking\" so Claude runs through without stopping for confirmation</div>", unsafe_allow_html=True)
     steps_placeholder.markdown(f'**5.** In the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> and press run — Claude reads the details from the chat and fills the Vehicle & Drivers tab', unsafe_allow_html=True)
     steps_placeholder.markdown("**6.** Check the **Vehicle & Drivers** tab — edit anything that's wrong or incomplete")
-    steps_placeholder.markdown("**7.** Select the brands you want to quote — lower down on this page - note 2-3 selections at a time is best")
+    steps_placeholder.markdown("**7.** Select the brands you want to quote — lower down on this page — note 2-3 selections at a time is best")
 
     if batch_prompts:
         b64, names, count = batch_prompts[0]
         steps_placeholder.markdown(f'**8.** Back in the sidebar, paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> and press run — Claude reads your details and quotes each insurer', unsafe_allow_html=True)
     else:
         steps_placeholder.markdown("**8.** Back in the sidebar, paste the quote prompt and press run *(select brands below first)*")
-    steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
+    steps_placeholder.markdown("<div style='margin-left:1.8rem;font-size:0.82rem;color:#888'>💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly</div>", unsafe_allow_html=True)
     steps_placeholder.markdown("**9.** Claude quotes each insurer automatically")
     steps_placeholder.markdown("**10.** Results appear in the Compare tab")
 
