@@ -646,7 +646,7 @@ Fill in each line. Write "not found" for anything missing."""
     steps_placeholder.caption("⚙️ At the bottom of the sidebar panel, select \"act without asking\" so Claude runs through without stopping for confirmation")
     steps_placeholder.markdown(f'**5.** In the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> and press run — Claude reads the details from the chat and fills the Vehicle & Drivers tab', unsafe_allow_html=True)
     steps_placeholder.markdown("**6.** Check the **Vehicle & Drivers** tab — edit anything that's wrong or incomplete")
-    steps_placeholder.markdown("**7.** Select the brands you want to quote — lower down on this page")
+    steps_placeholder.markdown("**7.** Select the brands you want to quote — lower down on this page - note 2-3 selections at a time is best")
 
     if batch_prompts:
         b64, names, count = batch_prompts[0]
@@ -654,7 +654,7 @@ Fill in each line. Write "not found" for anything missing."""
     else:
         steps_placeholder.markdown("**8.** Back in the sidebar, paste the quote prompt and press run *(select brands below first)*")
     steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
-    steps_placeholder.markdown("**9.** Claude quotes each insurer automatically — just watch")
+    steps_placeholder.markdown("**9.** Claude quotes each insurer automatically")
     steps_placeholder.markdown("**10.** Results appear in the Compare tab")
 
     if n_selected > 0:
