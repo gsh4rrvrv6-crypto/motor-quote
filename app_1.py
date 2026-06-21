@@ -247,6 +247,12 @@ st.markdown("""
     [data-testid="stBottomBlockContainer"] { display:none !important; }
     #MainMenu { display:none !important; }
     header [data-testid="stToolbar"] { display:none !important; }
+    [data-testid="stHeader"] { display:none !important; height:0 !important; }
+    [data-testid="stAppViewBlockContainer"], .main .block-container { padding-top:1rem !important; padding-bottom:1rem !important; }
+    .stApp [data-testid="stMainBlockContainer"] { padding-top:1rem !important; padding-bottom:1rem !important; }
+    [data-testid="stBottomBlockContainer"] { display:none !important; height:0 !important; min-height:0 !important; }
+    [data-testid="stBottom"] { display:none !important; height:0 !important; min-height:0 !important; }
+    section[data-testid="stMain"] { padding-bottom:0 !important; }
     [data-testid="stStatusWidget"] { display:none !important; }
     [data-testid="manage-app-button"] { display:none !important; }
     .stAppDeployButton { display:none !important; }
