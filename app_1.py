@@ -414,6 +414,43 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ── Session save / restore (top bar) ─────────────────────────────────────────
+session_data = {
+    "vehicle": st.session_state.vehicle,
+    "drivers": st.session_state.drivers,
+    "quotes": st.session_state.quotes,
+    "selected_insurers": sorted(st.session_state.selected_insurers),
+}
+col_save, col_restore_file, col_restore_btn = st.columns([1, 1, 1])
+with col_save:
+    st.download_button(
+        "💾 Save",
+        data=json.dumps(session_data, indent=2, default=str),
+        file_name=f"motor_quotes_{date.today().strftime('%d%m%y')}.json",
+        mime="application/json",
+        width="stretch",
+    )
+with col_restore_file:
+    restore_file = st.file_uploader("Restore", type=["json"], key="restore_upload", label_visibility="collapsed")
+with col_restore_btn:
+    if restore_file is not None and st.button("↩️ Restore", width="stretch"):
+        try:
+            data = json.loads(restore_file.read().decode("utf-8"))
+            st.session_state.vehicle = data.get("vehicle", {})
+            st.session_state.drivers = data.get("drivers", {})
+            st.session_state.quotes = data.get("quotes", [])
+            restored_sel = set(data.get("selected_insurers", []))
+            st.session_state.selected_insurers = restored_sel
+            for k in list(st.session_state.keys()):
+                if k.startswith("sel_"):
+                    st.session_state[k] = k[4:] in restored_sel
+            for ins in restored_sel:
+                st.session_state[f"sel_{ins}"] = True
+            st.session_state.imported_fps = {quote_fp(q) for q in st.session_state.quotes}
+            st.rerun()
+        except Exception as e:
+            st.error(f"Couldn't read that file: {e}")
+
 # ── Header ────────────────────────────────────────────────────────────────────
 st.markdown('<div class="main-header">🚗 Motor Quote Comparison</div>', unsafe_allow_html=True)
 
@@ -461,6 +498,7 @@ with tab_help:
         all_selectable_insurers.extend(members)
 
     n_cols = 7
+    SELECTION_CAP = 10
     for group_name, group_insurers in insurer_groups_ordered:
         st.markdown(f'<div class="group-label">{group_name}</div>', unsafe_allow_html=True)
         for row_start in range(0, len(group_insurers), n_cols):
@@ -476,16 +514,26 @@ with tab_help:
                             value=ins in st.session_state.selected_insurers
                         )
                         if is_selected:
-                            st.session_state.selected_insurers.add(ins)
+                            # Enforce the cap — only add if under the limit or already in
+                            if ins in st.session_state.selected_insurers or len(st.session_state.selected_insurers) < SELECTION_CAP:
+                                st.session_state.selected_insurers.add(ins)
+                                show_on = True
+                            else:
+                                # At cap — don't add; tile shows as off even though box is ticked
+                                show_on = False
                         else:
                             st.session_state.selected_insurers.discard(ins)
+                            show_on = False
                         fsize = "0.68rem" if len(ins) > 14 else ("0.72rem" if len(ins) > 10 else ("0.78rem" if len(ins) > 7 else "0.85rem"))
-                        if is_selected:
+                        if show_on:
                             st.markdown(f'<div class="brand-card brand-on" style="background:{bg};font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
                         else:
                             st.markdown(f'<div class="brand-card brand-off" style="font-size:{fsize}">{ins}</div>', unsafe_allow_html=True)
                     else:
                         pass
+
+    if len(st.session_state.selected_insurers) >= SELECTION_CAP:
+        st.caption(f"⚠️ Maximum of {SELECTION_CAP} insurers reached — deselect one to choose another.")
 
     st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
     st.caption("Youi, Shannons, WFI and Elders are not included — these brands require you to get a quote over the phone.")
@@ -497,7 +545,7 @@ with tab_help:
     master_sync_url = (f"{master_app_url}/?sync={st.session_state.sync_code}"
                        if master_app_url else "the Motor Quote Comparison app tab")
 
-    # Build ordered insurer list and split into parallel batches of 3
+    # Build ordered insurer list — all in one batch (max 10)
     ordered_selected = []
     for platform, members in PLATFORMS.items():
         for m in members:
@@ -507,8 +555,7 @@ with tab_help:
         if s not in ordered_selected:
             ordered_selected.append(s)
 
-    batch_size = 3
-    batches = [ordered_selected[i:i+batch_size] for i in range(0, len(ordered_selected), batch_size)]
+    batches = [ordered_selected] if ordered_selected else []
 
     # ── Vehicle & Drivers data (filled by the prefill prompt) ────────────
     v = st.session_state.vehicle
@@ -598,33 +645,20 @@ Fill in each line. Write "not found" for anything missing."""
     steps_placeholder.caption("⚙️ At the top of the sidebar panel, select versions of Sonnet for best results")
     steps_placeholder.caption("⚙️ At the bottom of the sidebar panel, select \"act without asking\" so Claude runs through without stopping for confirmation")
     steps_placeholder.markdown(f'**5.** In the sidebar, paste the <a href="data:text/plain;base64,{_prefill_b64}" download="prefill_prompt.txt">prefill prompt</a> and press run — Claude reads the details from the chat and fills the Vehicle & Drivers tab', unsafe_allow_html=True)
-    steps_placeholder.markdown("**6.** Check the **Vehicle & Drivers** tab — edit anything that's wrong")
+    steps_placeholder.markdown("**6.** Check the **Vehicle & Drivers** tab — edit anything that's wrong or incomplete")
     steps_placeholder.markdown("**7.** Select the brands you want to quote — lower down on this page")
 
-    if len(batches) <= 1:
-        if batch_prompts:
-            b64, names, count = batch_prompts[0]
-            steps_placeholder.markdown(f'**8.** Back in the sidebar, paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> and press run — Claude reads your details and quotes each insurer', unsafe_allow_html=True)
-        else:
-            steps_placeholder.markdown("**8.** Back in the sidebar, paste the quote prompt and press run *(select brands below first)*")
-        steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
-        steps_placeholder.markdown("**9.** Claude quotes each insurer automatically — just watch")
-        steps_placeholder.markdown("**10.** Results appear in the Compare tab")
+    if batch_prompts:
+        b64, names, count = batch_prompts[0]
+        steps_placeholder.markdown(f'**8.** Back in the sidebar, paste the <a href="data:text/plain;base64,{b64}" download="quote_prompt.txt">quote prompt</a> and press run — Claude reads your details and quotes each insurer', unsafe_allow_html=True)
     else:
-        steps_placeholder.markdown(f"**8.** Open **{len(batches)} browser windows** side by side (Cmd+N / Ctrl+N) and paste a different batch prompt into each sidebar:")
-        step_parts = []
-        for bi, (b64, names, count) in enumerate(batch_prompts):
-            step_parts.append(f'Window {bi+1}: <a href="data:text/plain;base64,{b64}" download="batch_{bi+1}_prompt.txt">batch {bi+1}</a> ({names})')
-        steps_placeholder.markdown("   " + " · ".join(step_parts), unsafe_allow_html=True)
-        steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
-        steps_placeholder.markdown(f"**9.** All {len(batches)} windows run simultaneously — total time ≈ one batch (~10–15 mins)")
-        steps_placeholder.markdown("**10.** Results appear in the Compare tab")
+        steps_placeholder.markdown("**8.** Back in the sidebar, paste the quote prompt and press run *(select brands below first)*")
+    steps_placeholder.caption("💡 The extension will ask permission for each insurer website — always click \"Always allow this site\" to keep it running smoothly")
+    steps_placeholder.markdown("**9.** Claude quotes each insurer automatically — just watch")
+    steps_placeholder.markdown("**10.** Results appear in the Compare tab")
 
     if n_selected > 0:
-        if len(batches) <= 1:
-            steps_placeholder.info(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected — estimated run time roughly {n_selected * 4}–{n_selected * 8} minutes")
-        else:
-            steps_placeholder.info(f"✅ {n_selected} insurers selected across {len(batches)} parallel batches — estimated run time roughly {max(len(b) for b in batches) * 4}–{max(len(b) for b in batches) * 8} minutes")
+        steps_placeholder.info(f"✅ {n_selected} insurer{'s' if n_selected != 1 else ''} selected — estimated run time roughly {n_selected * 4}–{n_selected * 8} minutes")
 
     st.markdown(_DISCLAIMER, unsafe_allow_html=True)
 
